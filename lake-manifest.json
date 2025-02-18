@@ -8,7 +8,7 @@
    "rev": "7e2375dd8e4a03cb8a8485c2804afd1a530fdec8",
    "name": "BasicLeanDatastructures",
    "manifestFile": "lake-manifest.json",
-   "inputRev": null,
+   "inputRev": "main",
    "inherited": false,
    "configFile": "lakefile.toml"}],
  "name": "PossiblyInfiniteTrees",
