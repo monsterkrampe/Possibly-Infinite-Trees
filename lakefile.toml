@@ -1,0 +1,11 @@
+name = "PossiblyInfiniteTrees"
+version = "0.1.0"
+defaultTargets = ["PossiblyInfiniteTrees"]
+
+[[lean_lib]]
+name = "PossiblyInfiniteTrees"
+
+[[require]]
+name = "BasicLeanDatastructures"
+git = "https://github.com/monsterkrampe/Basic-Lean-Datastructures.git"
+
