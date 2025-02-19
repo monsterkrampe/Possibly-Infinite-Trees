@@ -5,7 +5,7 @@ import PossiblyInfiniteTrees.PossiblyInfiniteTree.FiniteDegreeTree.Basic
 
 namespace FiniteDegreeTree
 
-  theorem branches_through_finite_of_none (tree : FiniteDegreeTree α) (node : List Nat) : tree.get node = none -> (tree.branches_through node).finite := by
+  theorem branches_through_finite_of_get_eq_none (tree : FiniteDegreeTree α) (node : List Nat) : tree.get node = none -> (tree.branches_through node).finite := by
 
     intro is_none
     let branch_for_node : PossiblyInfiniteList α := ⟨fun n => if n ≤ node.length then tree.get (node.drop (node.length - n)) else none, by
@@ -118,7 +118,7 @@ namespace FiniteDegreeTree
           apply no_orphans
           exact is_none
 
-  theorem branches_through_finite_of_branches_through_children_finite (tree : FiniteDegreeTree α) (node : List Nat) : (∀ i, (tree.branches_through (i :: node)).finite) -> (tree.branches_through node).finite := by
+  theorem branches_through_finite_of_each_successor_branches_through_finite (tree : FiniteDegreeTree α) (node : List Nat) : (∀ i, (tree.branches_through (i :: node)).finite) -> (tree.branches_through node).finite := by
 
     intro h
     have dec := Classical.typeDecidableEq (PossiblyInfiniteList α)
@@ -189,7 +189,7 @@ namespace FiniteDegreeTree
                   apply List.getElem?_eq_none
                   unfold nodes
                   simp
-                rw [getElem_children_eq_getElem_tree_children, PossiblyInfiniteTree.getElem_children_eq_get_tree] at child_none
+                rw [getElem_children_eq_getElem_lifted_children, PossiblyInfiniteTree.getElem_children_eq_get] at child_none
                 unfold PossiblyInfiniteTree.get at child_none
                 unfold InfiniteList.take
                 simp
@@ -218,7 +218,7 @@ namespace FiniteDegreeTree
         | inr pre =>
           rcases pre with ⟨branches, ex_i, branch_mem⟩
           rcases ex_i with ⟨i, _, eq⟩
-          rw [branches_through_eq_union_children]
+          rw [branches_through_eq_union_branches_through_successors]
           exists i.val
           have spec := Classical.choose_spec (h i.val)
           rw [← spec.right]
@@ -226,7 +226,7 @@ namespace FiniteDegreeTree
           rw [eq]
           exact branch_mem
       . intro pre
-        rw [branches_through_eq_union_children] at pre
+        rw [branches_through_eq_union_branches_through_successors] at pre
         rcases pre with ⟨i, pre⟩
         cases Decidable.em (i < (tree.children node).length) with
         | inl lt =>
@@ -275,7 +275,7 @@ namespace FiniteDegreeTree
                 rw [pre_r.left]
                 apply Nat.le_of_not_gt
                 exact not_lt
-              rw [getElem_children_eq_getElem_tree_children, PossiblyInfiniteTree.getElem_children_eq_get_tree] at this
+              rw [getElem_children_eq_getElem_lifted_children, PossiblyInfiniteTree.getElem_children_eq_get] at this
               unfold PossiblyInfiniteTree.get at this
               unfold InfiniteList.take
               simp
@@ -306,7 +306,7 @@ namespace FiniteDegreeTree
     have : ¬ ∀ i, (tree.branches_through (i :: prev_node)).finite := by
       intro contra
       apply not_finite
-      apply branches_through_finite_of_branches_through_children_finite
+      apply branches_through_finite_of_each_successor_branches_through_finite
       exact contra
     have : ∃ i, ¬ (tree.branches_through (i :: prev_node)).finite := by simp at this; exact this
     let i := Classical.choose this
@@ -321,7 +321,7 @@ namespace FiniteDegreeTree
   theorem infinite_branching_node_extends_previous (tree : FiniteDegreeTree α) (not_finite : ¬ tree.branches.finite) (depth : Nat) : (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth.succ).val = (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth.succ).val.head (by simp [infinite_branching_node_for_depth_of_branches_infinite]) :: (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth).val := by
     simp [infinite_branching_node_for_depth_of_branches_infinite]
 
-  theorem branches_finite_of_each_finite (tree : FiniteDegreeTree α) : (∀ branch, branch ∈ tree.branches -> ∃ i, branch.infinite_list i = none) -> tree.branches.finite := by
+  theorem branches_finite_of_each_branch_finite (tree : FiniteDegreeTree α) : (∀ branch, branch ∈ tree.branches -> ∃ i, branch.infinite_list i = none) -> tree.branches.finite := by
     intro h
 
     apply Classical.byContradiction
@@ -353,7 +353,7 @@ namespace FiniteDegreeTree
     let branch : PossiblyInfiniteList α := ⟨fun n => tree.get (nodes.take n).reverse, by
       intro n not_none m contra
       apply all_infinite m.val
-      apply branches_through_finite_of_none
+      apply branches_through_finite_of_get_eq_none
       exact contra
     ⟩
 
@@ -367,7 +367,7 @@ namespace FiniteDegreeTree
 
     rcases h with ⟨i, hi⟩
     apply all_infinite i
-    apply branches_through_finite_of_none
+    apply branches_through_finite_of_get_eq_none
     exact hi
 
 end FiniteDegreeTree
