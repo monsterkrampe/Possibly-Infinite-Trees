@@ -145,7 +145,7 @@ namespace FiniteDegreeTree
         exact no_orphans
     ⟩
     let branches_for_i (i : Nat) := Classical.choose (h i)
-    let target_list : List (PossiblyInfiniteList α) := (branch_for_node :: ((tree.children node).enum_with_lt.map (fun (i, _) => branches_for_i i.val)).flatten).eraseDupsKeepRight
+    let target_list : List (PossiblyInfiniteList α) := (branch_for_node :: ((tree.children node).zipIdx_with_lt.map (fun (_, i) => branches_for_i i.val)).flatten).eraseDupsKeepRight
     exists target_list
     constructor
     . apply List.nodup_eraseDupsKeepRight
@@ -217,7 +217,7 @@ namespace FiniteDegreeTree
             . simp
         | inr pre =>
           rcases pre with ⟨branches, ex_i, branch_mem⟩
-          rcases ex_i with ⟨i, _, eq⟩
+          rcases ex_i with ⟨_, i, _, eq⟩
           rw [branches_through_eq_union_branches_through_successors]
           exists i.val
           have spec := Classical.choose_spec (h i.val)
@@ -234,12 +234,12 @@ namespace FiniteDegreeTree
           exists branches_for_i i
           constructor
           . let i_fin : Fin (tree.children node).length := ⟨i, lt⟩
+            exists (tree.children node)[i]
             exists i_fin
             constructor
-            . exists (tree.children node)[i_fin]
-              rw [List.mem_enum_with_lt_iff_mem_enum]
-              rw [List.mem_enum_iff_getElem?]
-              simp
+            . rw [List.mem_zipIdx_with_lt_iff_mem_zipIdx]
+              rw [List.mem_zipIdx_iff_getElem?]
+              simp [i_fin]
             . rfl
           . have spec := Classical.choose_spec (h i)
             unfold branches_for_i
