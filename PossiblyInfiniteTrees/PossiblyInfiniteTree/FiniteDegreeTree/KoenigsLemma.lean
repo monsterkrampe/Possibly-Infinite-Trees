@@ -66,7 +66,7 @@ namespace FiniteDegreeTree
             simp only [branch_for_node, lt]
             have no_orphans := tree.tree.no_orphans (nodes.take n).reverse
             apply Eq.symm
-            apply Option.decidable_eq_none.byContradiction
+            apply Option.decidableEqNone.byContradiction
             intro contra
             specialize no_orphans contra ⟨node, by
               exists ((nodes.skip (node.length)).take (n - node.length)).reverse
@@ -107,7 +107,7 @@ namespace FiniteDegreeTree
           simp [lt]
 
           have no_orphans := tree.tree.no_orphans (nodes.take n).reverse
-          apply Option.decidable_eq_none.byContradiction
+          apply Option.decidableEqNone.byContradiction
           intro contra
           specialize no_orphans contra ⟨node, by
             exists ((nodes.skip (node.length)).take (n - node.length)).reverse
@@ -203,7 +203,7 @@ namespace FiniteDegreeTree
               | inr lt =>
                 have no_orphans := tree.tree.no_orphans (nodes.take n).reverse
                 apply Eq.symm
-                apply Option.decidable_eq_none.byContradiction
+                apply Option.decidableEqNone.byContradiction
                 intro contra
                 specialize no_orphans contra ⟨(nodes.take (node.length + 1)).reverse, by
                   exists ((nodes.skip (node.length + 1)).take (n - (node.length + 1))).reverse
@@ -286,7 +286,7 @@ namespace FiniteDegreeTree
             | inl eq => rw [← eq]; exact this
             | inr lt =>
               have no_orphans := tree.tree.no_orphans (nodes.take n).reverse
-              apply Option.decidable_eq_none.byContradiction
+              apply Option.decidableEqNone.byContradiction
               intro contra
               specialize no_orphans contra ⟨(nodes.take (node.length + 1)).reverse, by
                 exists ((nodes.skip (node.length + 1)).take (n - (node.length + 1))).reverse

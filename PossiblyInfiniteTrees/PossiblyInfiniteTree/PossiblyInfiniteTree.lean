@@ -2,11 +2,11 @@ import PossiblyInfiniteTrees.PossiblyInfiniteTree.InfiniteTree
 
 structure PossiblyInfiniteTree (α : Type u) where
   infinite_tree : InfiniteTreeSkeleton (Option α)
-  no_orphans : 
-    ∀ node : List Nat, infinite_tree node ≠ none -> 
+  no_orphans :
+    ∀ node : List Nat, infinite_tree node ≠ none ->
     ∀ parent : { l : List Nat // ∃ diff, diff ++ l = node }, infinite_tree parent ≠ none
   no_holes_in_children :
-    ∀ node : List Nat, ∀ n : Nat, (infinite_tree.children node) n ≠ none -> 
+    ∀ node : List Nat, ∀ n : Nat, (infinite_tree.children node) n ≠ none ->
     ∀ m : Fin n, (infinite_tree.children node) m ≠ none
 
 namespace PossiblyInfiniteTree
@@ -25,7 +25,7 @@ namespace PossiblyInfiniteTree
     simp
     apply funext
     intro index
-    have dec : Decidable (tree.infinite_tree.children node index = none) := Option.decidable_eq_none
+    have dec : Decidable (tree.infinite_tree.children node index = none) := Option.decidableEqNone
     apply dec.byContradiction
     intro contra
     let parent : { l : List Nat // ∃ diff, diff ++ l = index :: node } := ⟨node, by exists [index]⟩
@@ -56,7 +56,7 @@ namespace PossiblyInfiniteTree
     cases n with
     | zero => exact h
     | succ n =>
-      apply Option.decidable_eq_none.byContradiction
+      apply Option.decidableEqNone.byContradiction
       intro contra
       have no_holes := tree.no_holes_in_children node (n+1)
       unfold children at no_holes

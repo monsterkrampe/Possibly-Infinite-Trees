@@ -224,7 +224,7 @@ namespace FiniteDegreeTree
       apply PossiblyInfiniteTree.each_successor_none_of_children_empty
 
       have zero_th_child_none : (tree.tree.children node).infinite_list 0 = none := by
-        have dec : Decidable ((tree.tree.children node).infinite_list 0 = none) := Option.decidable_eq_none
+        have dec : Decidable ((tree.tree.children node).infinite_list 0 = none) := Option.decidableEqNone
         apply dec.byContradiction
         intro contra
         split at h
@@ -236,7 +236,7 @@ namespace FiniteDegreeTree
         cases i with
         | zero => apply zero_th_child_none
         | succ i =>
-          have dec : Decidable ((tree.tree.children node).infinite_list (i+1) = none) := Option.decidable_eq_none
+          have dec : Decidable ((tree.tree.children node).infinite_list (i+1) = none) := Option.decidableEqNone
           apply dec.byContradiction
           intro contra
           let zero_fin : Fin (i+1) := ⟨0, by simp⟩
@@ -271,7 +271,7 @@ namespace FiniteDegreeTree
         case h_1 heq =>
           unfold children.loop
           have : (tree.tree.children node).infinite_list (index + 1 + c) = none := by
-            apply Option.decidable_eq_none.byContradiction
+            apply Option.decidableEqNone.byContradiction
             intro contra
             let m : Fin (index + 1 + c) := ⟨c, by simp⟩
             apply (tree.tree.children node).no_holes (index + 1 + c) contra m
