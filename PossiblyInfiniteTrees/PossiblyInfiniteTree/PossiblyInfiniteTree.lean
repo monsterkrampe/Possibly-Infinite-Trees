@@ -78,8 +78,7 @@ namespace PossiblyInfiniteTree
 
   theorem branches_through_eq_union_branches_through_successors (tree : PossiblyInfiniteTree α) (node : List Nat) : tree.branches_through node = fun b => ∃ (i : Nat), b ∈ tree.branches_through (i :: node) := by
     unfold branches_through
-    apply funext
-    simp
+    apply Set.ext
     intro pil
     rw [tree.infinite_tree.branches_through_eq_union_branches_through_successors]
     constructor
