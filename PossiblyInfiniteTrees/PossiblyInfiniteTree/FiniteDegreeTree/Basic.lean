@@ -70,7 +70,7 @@ namespace FiniteDegreeTree
             | none =>
               split at h
               . contradiction
-              case a.none.h_2 _ heq =>
+              case h_2 _ heq =>
                 rw [eq2] at heq
                 contradiction
             | some a =>
