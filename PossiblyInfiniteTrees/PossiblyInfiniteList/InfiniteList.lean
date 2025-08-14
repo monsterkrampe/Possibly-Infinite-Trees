@@ -47,7 +47,7 @@ namespace InfiniteList
     | zero => simp [take]
     | succ n ih =>
       simp [take]
-      rw [List.take_append_eq_append_take]
+      rw [List.take_append]
       rw [ih]
       rw [length_take]
       cases Decidable.em (n ≤ m) with

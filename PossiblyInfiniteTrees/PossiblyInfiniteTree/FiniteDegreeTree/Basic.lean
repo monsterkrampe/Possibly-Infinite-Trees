@@ -56,7 +56,7 @@ namespace FiniteDegreeTree
         constructor
         . intro contra
           apply False.elim
-          simp [eq] at contra
+          simp at contra
           split at contra
           . contradiction
           case h_2 _ heq =>

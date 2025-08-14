@@ -18,7 +18,7 @@ namespace InfiniteTreeSkeleton
   theorem branches_through_eq_union_branches_through_successors (tree : InfiniteTreeSkeleton α) (node : List Nat) : tree.branches_through node = fun b => ∃ (i : Nat), b ∈ tree.branches_through (i :: node) := by
     unfold branches_through
     apply Set.ext
-    simp only [List.length_cons, List.reverse_eq_cons_iff, eq_iff_iff]
+    simp only [List.length_cons, List.reverse_eq_cons_iff]
     intro b
     constructor
     . intro ⟨nodes, h⟩
