@@ -70,24 +70,59 @@ namespace PossiblyInfiniteTree
     unfold InfiniteTreeSkeleton.children
     simp
 
-  def branches_through (tree : PossiblyInfiniteTree α) (node : List Nat) : Set (PossiblyInfiniteList α) := fun pil =>
-    pil.infinite_list ∈ tree.infinite_tree.branches_through node
+  def branch_address_is_maximal (tree : PossiblyInfiniteTree α) (nodes : InfiniteList Nat) : Prop :=
+    ∀ n, tree.get (nodes.take (n+1)).reverse = none -> tree.get (0 :: (nodes.take n).reverse) = none
 
-  def branches (tree : PossiblyInfiniteTree α) : Set (PossiblyInfiniteList α) := fun pil =>
-    pil.infinite_list ∈ tree.infinite_tree.branches
+  def branch_addresses_through (tree : PossiblyInfiniteTree α) (node : List Nat) : Set (InfiniteList Nat) := fun nodes =>
+    nodes ∈ InfiniteTreeSkeleton.branch_addresses_through node ∧ tree.branch_address_is_maximal nodes
+
+  def branch_for_address (tree : PossiblyInfiniteTree α) (nodes : InfiniteList Nat) : PossiblyInfiniteList α := {
+    infinite_list := tree.infinite_tree.branch_for_address nodes
+    no_holes := by
+      intro n h m
+      exact tree.no_orphans
+        (nodes.take n).reverse
+        h
+        ⟨(nodes.take m.val).reverse, by exists ((nodes.skip m.val).take (n - m.val)).reverse; rw [← List.reverse_append, InfiniteList.combine_skip_take]⟩
+  }
+
+  def branches_through (tree : PossiblyInfiniteTree α) (node : List Nat) : Set (PossiblyInfiniteList α) :=
+    (tree.branch_addresses_through node).map tree.branch_for_address
+
+  def branches (tree : PossiblyInfiniteTree α) : Set (PossiblyInfiniteList α) := tree.branches_through []
+
+  theorem branch_addresses_through_eq_union_branch_addresses_through_successors (tree : PossiblyInfiniteTree α) (node : List Nat) : tree.branch_addresses_through node = fun nodes => ∃ (i : Nat), nodes ∈ tree.branch_addresses_through (i :: node) := by
+    unfold branch_addresses_through
+    apply Set.ext
+    intro pil
+    rw [InfiniteTreeSkeleton.branch_addresses_through_eq_union_branch_addresses_through_successors]
+    constructor
+    . intro ⟨hl, hr⟩
+      rcases hl with ⟨i, hl⟩
+      exists i
+    . intro h
+      rcases h with ⟨i, hl, hr⟩
+      constructor
+      . exists i
+      . exact hr
 
   theorem branches_through_eq_union_branches_through_successors (tree : PossiblyInfiniteTree α) (node : List Nat) : tree.branches_through node = fun b => ∃ (i : Nat), b ∈ tree.branches_through (i :: node) := by
     unfold branches_through
+    rw [branch_addresses_through_eq_union_branch_addresses_through_successors]
     apply Set.ext
     intro pil
-    rw [tree.infinite_tree.branches_through_eq_union_branches_through_successors]
     constructor
-    . intro h
+    . intro ⟨nodes, h, b_eq⟩
       rcases h with ⟨i, h⟩
       exists i
+      exists nodes
     . intro h
-      rcases h with ⟨i, h⟩
-      exists i
+      rcases h with ⟨i, nodes, h⟩
+      exists nodes
+      constructor
+      . exists i
+        exact h.left
+      . exact h.right
 
   def leaves (tree : PossiblyInfiniteTree α) : Set α := fun a => ∃ node : List Nat, tree.get node = some a ∧ tree.children node = PossiblyInfiniteList.empty
 
