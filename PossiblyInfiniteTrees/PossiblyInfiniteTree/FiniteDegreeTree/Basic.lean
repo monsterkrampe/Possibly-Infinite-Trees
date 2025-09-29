@@ -317,5 +317,37 @@ namespace FiniteDegreeTree
 
   def leaves (tree : FiniteDegreeTree α) : Set α := tree.tree.leaves
 
+  def from_branch (branch : PossiblyInfiniteList α) : FiniteDegreeTree α := {
+    tree := PossiblyInfiniteTree.from_branch branch
+    finitely_many_children := by
+      intro node
+      cases eq : branch.infinite_list (node.length + 1) with
+      | none =>
+        exists 0
+        rw [PossiblyInfiniteTree.getElem_children_eq_get]
+        unfold PossiblyInfiniteTree.get
+        cases eq2 : node.all (fun e => e = 0) with
+        | false => simp only [PossiblyInfiniteTree.from_branch, List.all_cons, eq2, decide_true, Bool.and_false, Bool.false_eq_true, ↓reduceIte, true_and]; intro k; have isLt := k.isLt; simp at isLt
+        | true => simp only [PossiblyInfiniteTree.from_branch, List.all_cons, eq2, decide_true, Bool.true_and, ↓reduceIte, List.length_cons, eq, true_and]; intro k; have isLt := k.isLt; simp at isLt
+      | some _ =>
+        cases eq2 : node.all (fun e => e = 0) with
+        | false =>
+          exists 0
+          rw [PossiblyInfiniteTree.getElem_children_eq_get]
+          unfold PossiblyInfiniteTree.get
+          simp only [PossiblyInfiniteTree.from_branch, List.all_cons, eq2, decide_true, Bool.and_false, Bool.false_eq_true, ↓reduceIte, true_and]
+          intro k; have isLt := k.isLt; simp at isLt
+        | true =>
+          exists 1
+          rw [PossiblyInfiniteTree.getElem_children_eq_get]
+          unfold PossiblyInfiniteTree.get
+          simp only [PossiblyInfiniteTree.from_branch, List.all_cons, Nat.succ_ne_self, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, true_and]
+          simp only [Fin.val_eq_zero, forall_const]
+          rw [PossiblyInfiniteTree.getElem_children_eq_get]
+          unfold PossiblyInfiniteTree.get
+          simp only [List.all_cons, decide_true, Bool.true_and, eq2, ↓reduceIte, List.length_cons]
+          rw [eq]
+          simp
+  }
 end FiniteDegreeTree
 

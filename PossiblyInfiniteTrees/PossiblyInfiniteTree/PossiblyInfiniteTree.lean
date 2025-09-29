@@ -126,5 +126,45 @@ namespace PossiblyInfiniteTree
 
   def leaves (tree : PossiblyInfiniteTree α) : Set α := fun a => ∃ node : List Nat, tree.get node = some a ∧ tree.children node = PossiblyInfiniteList.empty
 
+  def from_branch (branch : PossiblyInfiniteList α) : PossiblyInfiniteTree α := {
+    infinite_tree := fun node => if node.all (fun e => e = 0) then branch.infinite_list node.length else none
+    no_orphans := by
+      intro node
+      cases eq : node.all (fun e => e = 0) with
+      | false => simp
+      | true =>
+        intro not_none
+        intro parent
+        rcases parent.property with ⟨diff, node_eq⟩
+        have : parent.val.all (fun e => e = 0) := by
+          rw [← node_eq] at eq
+          rw [List.all_append] at eq
+          rw [Bool.and_eq_true] at eq
+          exact eq.right
+        simp only [this, ↓reduceIte]
+        cases diff with
+        | nil => rw [List.nil_append] at node_eq; rw [node_eq]; apply not_none
+        | cons _ _ =>
+          let parent_len_fin : Fin node.length := ⟨parent.val.length, by simp only [← node_eq, List.cons_append, List.length_cons, List.length_append]; apply Nat.lt_add_one_of_le; simp⟩
+          have := branch.no_holes node.length not_none parent_len_fin
+          exact this
+    no_holes_in_children := by
+      intro l n
+      unfold InfiniteTreeSkeleton.children
+      cases n with
+      | succ n =>
+        have all_eq_false : ((n+1)::l).all (fun e => e = 0) = false := by
+          rw [List.all_eq_false]
+          exists n+1
+          constructor
+          . apply List.mem_cons_self
+          . simp
+        simp [all_eq_false]
+      | zero =>
+        intro _ m
+        have isLt := m.isLt
+        simp at isLt
+  }
+
 end PossiblyInfiniteTree
 
