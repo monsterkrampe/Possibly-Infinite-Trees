@@ -1,69 +1,80 @@
+-- We mimic Mathlib's Stream' a lot here.
+-- Still I keep this separate to see better what is actually needed
+-- and since what we need should be simple enough.
+
 def InfiniteList (α : Type u) := Nat -> α
 
 namespace InfiniteList
 
+  def get (l : InfiniteList α) (n : Nat) : α := l n
+
+  instance : Membership α (InfiniteList α) where
+    mem l a := ∃ n, l.get n = a
+
+  def drop (l : InfiniteList α) (n : Nat) : InfiniteList α := fun i => l.get (n + i)
+
+  theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n + i) := by rfl
+
+  theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by
+    apply funext
+
+  theorem ext_iff {l1 l2 : InfiniteList α} : l1 = l2 ↔ (∀ n, l1.get n = l2.get n) := by
+    constructor
+    . intro h _; rw [h]
+    . exact ext
+
+  theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by apply ext; intro n; rw [get_drop, Nat.zero_add]
+
+  def cons (hd : α) (tl : InfiniteList α) : InfiniteList α
+  | .zero => hd
+  | .succ n => tl n
+
+  theorem get_cons_zero {hd : α} {tl : InfiniteList α} : (cons hd tl).get 0 = hd := by rfl
+  theorem get_cons_succ {hd : α} {tl : InfiniteList α} : ∀ n, (cons hd tl).get n.succ = tl.get n := by intro n; rfl
+
+  def head (l : InfiniteList α) : α := l.get 0
+  def tail (l : InfiniteList α) : InfiniteList α := fun n => l.get n.succ
+
+  theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := rfl
+
+  theorem head_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).head = hd := by rfl
+  theorem tail_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).tail = tl := by rfl
+
+  theorem cons_head_tail (l : InfiniteList α) : l = cons l.head l.tail := by apply ext; intro n; cases n; rw [get_cons_zero]; rfl; rw [get_cons_succ]; rfl
+
+  theorem get_tail {l : InfiniteList α} : ∀ n, l.tail.get n = l.get n.succ := by intros; rfl
+
+  theorem head_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).head = l.get n := by intros; rfl
+  theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
+    intros; unfold tail; apply ext; intro n; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
+
+  def map (l : InfiniteList α) (f : α -> β) : InfiniteList β := fun n => f (l.get n)
+
+  theorem get_map {l : InfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get n = f (l.get n) := by rfl
+
   def take (l : InfiniteList α) : Nat -> List α
-  | 0 => []
-  | n+1 => (l.take n) ++ [l n]
+  | .zero => []
+  | .succ n => l.head :: (l.tail.take n)
 
-  theorem length_take (l : InfiniteList α) (n : Nat) : (l.take n).length = n := by
-    induction n ; simp [take] ; simpa [take]
-
-  def skip (l : InfiniteList α) (m : Nat) : InfiniteList α := fun n => l (n + m)
-
-  theorem skip_zero_eq (l : InfiniteList α) : l.skip 0 = l := by unfold skip; simp only [Nat.add_zero]
-
-  theorem skip_m_get_sub_eq_get (l : InfiniteList α) (n m : Nat) (h : m ≤ n) : (l.skip m) (n - m) = l n := by
-    unfold skip
-    rw [← Nat.sub_add_comm h]
-    simp
-
-  theorem combine_skip_take (l : InfiniteList α) (n : Nat) (m : Fin n) : l.take m ++ (l.skip m).take (n-m) = l.take n := by
-    induction n with
-    | zero =>
-      apply False.elim
-      apply Nat.not_lt_zero
-      apply m.isLt
-    | succ k ih =>
-      have : k.succ - m = (k-m).succ := by
-        simp only [Nat.succ_eq_add_one]
-        rw [Nat.sub_add_comm]
-        apply Nat.le_of_lt_succ
-        exact m.isLt
-      rw [this]
-      simp only [take]
-      rw [skip_m_get_sub_eq_get (h := by apply Nat.le_of_lt_succ; exact m.isLt)]
-      rw [← List.append_assoc]
-      cases Decidable.em (m < k) with
-      | inl hl =>
-        rw [ih ⟨m.val, hl⟩]
-      | inr hr =>
-        have : m = k := by cases Nat.lt_or_eq_of_le (Nat.le_of_lt_succ m.isLt); contradiction; assumption
-        rw [this]
-        simp [take]
-
-  theorem take_after_take (l : InfiniteList α) (n m : Nat) : (l.take n).take m = l.take (n.min m) := by
-    induction n with
+  theorem length_take {l : InfiniteList α} : ∀ {n}, (l.take n).length = n := by
+    intro n
+    induction n generalizing l with
     | zero => simp [take]
-    | succ n ih =>
-      simp [take]
-      rw [List.take_append]
-      rw [ih]
-      rw [length_take]
-      cases Decidable.em (n ≤ m) with
-      | inl le =>
-        simp [Nat.min_eq_left le]
-        cases Nat.eq_or_lt_of_le le with
-        | inl eq =>
-          rw [eq]
-          simp
-        | inr lt =>
-          simp [Nat.min_eq_left (Nat.succ_le_of_lt lt)]
-          conv => right; unfold InfiniteList.take
-          rw [List.take_of_length_le (by apply Nat.le_sub_of_add_le; rw [Nat.add_comm, List.length_singleton]; apply Nat.succ_le_of_lt; exact lt)]
-      | inr lt =>
-        simp at lt
-        simp [Nat.min_eq_right (Nat.le_of_lt lt), Nat.min_eq_right (Nat.le_succ_of_le (Nat.le_of_lt lt))]
-        apply Nat.sub_eq_zero_of_le (Nat.le_of_lt lt)
+    | succ n ih => simp [take, ih]
+
+  theorem take_zero {l : InfiniteList α} : l.take 0 = [] := by rfl
+  theorem take_succ {l : InfiniteList α} : ∀ n, l.take n.succ = l.head :: (l.tail.take n) := by intros; rfl
+  theorem take_succ' {l : InfiniteList α} : ∀ n, l.take n.succ = l.take n ++ [l.get n] := by
+    intro n
+    induction n generalizing l with
+    | zero => simp [take_succ, take_zero, head]
+    | succ n ih => rw [take_succ, ih, take_succ]; rfl
+
+  theorem take_add {l : InfiniteList α} : ∀ n m, l.take (n + m) = l.take n ++ (l.drop n).take m := by
+    intro n m
+    induction m with
+    | zero => simp [take_zero]
+    | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
+
 end InfiniteList
 

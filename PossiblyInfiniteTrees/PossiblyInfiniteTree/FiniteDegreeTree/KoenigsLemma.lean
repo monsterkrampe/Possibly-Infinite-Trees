@@ -5,413 +5,193 @@ import PossiblyInfiniteTrees.PossiblyInfiniteTree.FiniteDegreeTree.Basic
 
 namespace FiniteDegreeTree
 
-  theorem branches_through_finite_of_get_eq_none (tree : FiniteDegreeTree α) (node : List Nat) : tree.get node = none -> (tree.branches_through node).finite := by
-    intro is_none
-    let nodes : InfiniteList Nat := fun n => if _isLt : n < node.length then node[node.length - (n+1)] else 0
-    let branch_for_node := tree.tree.branch_for_address nodes
-    have nodes_eq : ∀ n, n ≤ node.length -> (nodes.take n).reverse = node.drop (node.length - n) := by
+  theorem branches_empty_of_root_none {t : FiniteDegreeTree α} : t.root = none -> t.branches = fun b => b = PossiblyInfiniteList.empty := by
+    intro root_none
+    unfold root at root_none
+    rw [← PossiblyInfiniteTree.empty_iff_root_none] at root_none
+    unfold branches
+    unfold PossiblyInfiniteTree.branches
+    apply Set.ext
+    intro b
+    constructor
+    . rintro ⟨ns, b_eq, max⟩
+      rw [b_eq]
+      rw [root_none]
+      unfold PossiblyInfiniteTree.branchForAddress
+      unfold InfiniteTreeSkeleton.branchForAddress
+      apply PossiblyInfiniteList.ext
       intro n
-      induction n with
-      | zero => simp [InfiniteList.take]
-      | succ n ih =>
-        intro le
-        unfold InfiniteList.take
-        simp
-        rw [ih (by apply Nat.le_of_succ_le le)]
-        unfold nodes
-        have lt : n < node.length := by apply Nat.lt_of_succ_le le
-        simp [lt]
-        conv => right; rw [List.drop_eq_getElem_cons (by apply Nat.sub_lt_self; simp; exact le)]
-        have : node.length - (n + 1) + 1 = node.length - n := by omega
-        rw [this]
-    -- TODO: I think this could be decidable
-    cases Classical.em (tree.tree.branch_address_is_maximal nodes) with
-    | inl is_maximal =>
-      exists [branch_for_node]
+      rw [PossiblyInfiniteList.get?_empty]
+      simp only [PossiblyInfiniteList.get?, InfiniteList.get]
+      rw [← PossiblyInfiniteTree.get?.eq_def, PossiblyInfiniteTree.get?_empty]
+    . intro b_eq
+      exists fun _ => 0
       constructor
-      . simp
-      . intro e
-        constructor
-        . intro h
-          simp at h
-          rw [h]
-          exists nodes
-          constructor
-          . constructor
-            . unfold InfiniteTreeSkeleton.branch_addresses_through
-              simp only [Membership.mem]
-              rw [nodes_eq node.length]
-              . simp
-              . simp
-            . exact is_maximal
-          . rfl
-        . intro h
-          rcases h with ⟨nodes2, h⟩
-          rw [List.mem_singleton]
-          rw [PossiblyInfiniteList.eq_iff_same_on_all_indices]
-          intro n
-          rw [h.right]
-          unfold branch_for_node
-          simp only [PossiblyInfiniteTree.branch_for_address, InfiniteTreeSkeleton.branch_for_address]
-          cases Decidable.em (n ≤ node.length) with
-          | inl le =>
-            have : (nodes2.take n).reverse = node.drop (node.length - n) := by
-              conv => right; right; rw [← h.left.left]
-              rw [List.drop_reverse]
-              rw [InfiniteList.length_take]
-              rw [InfiniteList.take_after_take]
-              rw [Nat.sub_sub_self le]
-              simp [Nat.min_eq_right le]
-            rw [this, nodes_eq]
-            exact le
-          | inr lt =>
-            have nodes2_eq_none : tree.tree.infinite_tree (nodes2.take n).reverse = none := by
-              apply Option.decidableEqNone.byContradiction
-              intro contra
-              have no_orphans := tree.tree.no_orphans (nodes2.take n).reverse contra ⟨node, by
-                exists ((nodes2.skip (node.length)).take (n - node.length)).reverse
-                conv => left; right; rw [← h.left.left]
-                rw [← List.reverse_append]
-                rw [InfiniteList.combine_skip_take nodes2 n ⟨node.length, by apply Nat.lt_of_not_le; exact lt⟩]⟩
-              apply no_orphans
-              exact is_none
-            have nodes_eq_none : tree.tree.infinite_tree (nodes.take n).reverse = none := by
-              apply Option.decidableEqNone.byContradiction
-              intro contra
-              have no_orphans := tree.tree.no_orphans (nodes.take n).reverse contra ⟨node, by
-                exists ((nodes.skip (node.length)).take (n - node.length)).reverse
-                have : node = (nodes.take node.length).reverse := by
-                  rw [nodes_eq]
-                  . simp
-                  . simp
-                conv => left; right; rw [this]
-                rw [← List.reverse_append]
-                rw [InfiniteList.combine_skip_take nodes n ⟨node.length, by apply Nat.lt_of_not_le; exact lt⟩]⟩
-              apply no_orphans
-              exact is_none
-            rw [nodes2_eq_none, nodes_eq_none]
-    | inr not_maximal =>
-      exists []
-      constructor
-      . simp
-      . simp only [List.not_mem_nil, false_iff]
-        intro pil contra
-        rcases contra with ⟨nodes2, contra⟩
-        apply not_maximal
-
-        have nodes_eq_nodes2 : ∀ n, n ≤ node.length -> (nodes.take n).reverse = (nodes2.take n).reverse := by
-          intro n le
-          have : (nodes2.take n).reverse = node.drop (node.length - n) := by
-            conv => right; right; rw [← contra.left.left]
-            rw [List.drop_reverse]
-            rw [InfiniteList.length_take]
-            rw [InfiniteList.take_after_take]
-            rw [Nat.sub_sub_self le]
-            simp [Nat.min_eq_right le]
-          rw [this]
-          rw [nodes_eq]
-          exact le
-
-        intro n h
-        cases Decidable.em (n < node.length) with
-        | inl lt =>
-          rw [nodes_eq_nodes2]
-          apply contra.left.right
-          rw [← nodes_eq_nodes2]
-          . exact h
-          . apply Nat.succ_le_of_lt
-            exact lt
-          . apply Nat.le_of_lt
-            exact lt
-        | inr le =>
-          simp only [Nat.not_lt] at le
-          have : (nodes.take (n+1)).reverse = 0 :: (nodes.take n).reverse := by
-            conv => left; unfold nodes; simp only [InfiniteList.take]
-            rw [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append, List.cons_eq_cons]
-            constructor
-            . have : ¬ n < node.length := by apply Nat.not_lt_of_le; exact le
-              simp [this]
-            . rfl
-          rw [← this]
-          exact h
-
-  theorem branches_through_finite_of_children_empty (tree : FiniteDegreeTree α) (node : List Nat) : tree.children node = [] -> (tree.branches_through node).finite := by
-    intro h
-    cases Option.decidableEqNone.em (tree.get node = none) with
-    | inl eq_none => apply branches_through_finite_of_get_eq_none; exact eq_none
-    | inr neq_none =>
-      let nodes : InfiniteList Nat := fun n => if _isLt : n < node.length then node[node.length - (n+1)] else 0
-      let branch_for_node := tree.tree.branch_for_address nodes
-      have nodes_eq : ∀ n, n ≤ node.length -> (nodes.take n).reverse = node.drop (node.length - n) := by
+      . rw [root_none, b_eq]
+        unfold PossiblyInfiniteTree.branchForAddress
+        unfold InfiniteTreeSkeleton.branchForAddress
+        apply PossiblyInfiniteList.ext
         intro n
-        induction n with
-        | zero => simp [InfiniteList.take]
-        | succ n ih =>
-          intro le
-          unfold InfiniteList.take
-          simp
-          rw [ih (by apply Nat.le_of_succ_le le)]
-          unfold nodes
-          have lt : n < node.length := by apply Nat.lt_of_succ_le le
-          simp [lt]
-          conv => right; rw [List.drop_eq_getElem_cons (by apply Nat.sub_lt_self; simp; exact le)]
-          have : node.length - (n + 1) + 1 = node.length - n := by omega
-          rw [this]
-      exists [branch_for_node]
-      constructor
-      . simp
-      . intro branch
-        simp only [List.mem_singleton]
+        rw [PossiblyInfiniteList.get?_empty]
+        simp only [PossiblyInfiniteList.get?, InfiniteList.get]
+        rw [← PossiblyInfiniteTree.get?.eq_def, PossiblyInfiniteTree.get?_empty]
+      . rw [root_none]
+        intro n _
+        unfold PossiblyInfiniteList.head InfiniteList.head
+        rw [← PossiblyInfiniteList.get?.eq_def]
+        rw [PossiblyInfiniteTree.get?_childNodes, PossiblyInfiniteTree.get?_childTrees]
+        rw [PossiblyInfiniteTree.drop_drop, PossiblyInfiniteTree.drop_empty, PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]
+        rw [PossiblyInfiniteTree.root_empty]
+
+  theorem branches_finite_of_root_none {t : FiniteDegreeTree α} : t.root = none -> t.branches.finite := by
+    intro root_none
+    rw [branches_empty_of_root_none root_none]
+    exists [PossiblyInfiniteList.empty]
+    constructor
+    . simp
+    . intro b; rw [List.mem_singleton]; rfl
+
+
+  theorem branches_finite_of_each_child_branches_finite (t : FiniteDegreeTree α) : (∀ c ∈ t.childTrees, c.val.branches.finite) -> t.branches.finite := by
+    cases root_eq : t.root with
+    | none => intro _; apply branches_finite_of_root_none; exact root_eq
+    | some r =>
+      intro children_finite
+
+      cases eq : t.childTrees with
+      | nil =>
+        exists [PossiblyInfiniteList.cons r (PossiblyInfiniteList.empty)]
         constructor
-        . intro pre
-          rw [pre]
-          exists nodes
+        . simp
+        intro b
+        rw [List.mem_singleton, branches_eq]
+        constructor
+        . intro h
+          rw [h]
           constructor
-          . constructor
-            . unfold InfiniteTreeSkeleton.branch_addresses_through; simp only [Membership.mem]; rw [nodes_eq node.length]; simp; simp
-            . intro n
-              cases Decidable.em (n < node.length) with
-              | inl lt =>
-                intro contra
-                apply False.elim
-                apply tree.tree.no_orphans node neq_none ⟨(nodes.take (n+1)).reverse, by
-                  exists ((nodes.skip (n+1)).take (node.length - (n+1))).reverse
-                  rw [← List.reverse_append]
-                  cases Decidable.em (n + 1 < node.length) with
-                  | inl lt2 =>
-                    rw [InfiniteList.combine_skip_take nodes node.length ⟨n+1, lt2⟩]
-                    rw [nodes_eq]
-                    . simp
-                    . simp
-                  | inr le2 =>
-                    have : n+1 = node.length := by
-                      apply Nat.eq_of_lt_succ_of_not_lt
-                      . apply Nat.succ_lt_succ; exact lt
-                      . exact le2
-                    rw [this]
-                    simp only [Nat.sub_self, InfiniteList.take, List.append_nil]
-                    rw [nodes_eq]
-                    . simp
-                    . simp⟩
-                exact contra
-              | inr le =>
-                intro eq_none
-                unfold InfiniteList.take at eq_none
-                rw [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append] at eq_none
-                unfold nodes at eq_none
-                simp only [le, ↓reduceDIte] at eq_none
-                exact eq_none
-          . rfl
-        . intro pre
-          rcases pre with ⟨nodes2, pre⟩
-          rw [pre.right]
-          rw [PossiblyInfiniteList.eq_iff_same_on_all_indices]
-          intro n
-          unfold branch_for_node
-          simp only [PossiblyInfiniteTree.branch_for_address, InfiniteTreeSkeleton.branch_for_address]
-          cases Decidable.em (n ≤ node.length) with
-          | inl le =>
-            have : (nodes2.take n).reverse = node.drop (node.length - n) := by
-              conv => right; right; rw [← pre.left.left]
-              rw [List.drop_reverse]
-              rw [InfiniteList.length_take]
-              rw [InfiniteList.take_after_take]
-              rw [Nat.sub_sub_self le]
-              simp [Nat.min_eq_right le]
-            rw [this, nodes_eq]
-            exact le
-          | inr lt =>
-            have nodes2_eq_none : tree.tree.infinite_tree (nodes2.take n).reverse = none := by
-              apply Option.decidableEqNone.byContradiction
-              intro contra
-              have no_orphans := tree.tree.no_orphans (nodes2.take n).reverse contra ⟨(nodes2.take (node.length + 1)).reverse, by
-                exists ((nodes2.skip (node.length + 1)).take (n - (node.length + 1))).reverse
-                rw [← List.reverse_append]
-                cases Decidable.em (node.length + 1 < n) with
-                | inl lt2 => rw [InfiniteList.combine_skip_take nodes2 n ⟨node.length+1, lt2⟩]
-                | inr le2 =>
-                  have : node.length + 1 = n := by
-                    apply Nat.eq_of_lt_succ_of_not_lt
-                    . apply Nat.succ_lt_succ; apply Nat.lt_of_not_le; exact lt
-                    . exact le2
-                  rw [this]
-                  simp only [Nat.sub_self, InfiniteList.take, List.append_nil]⟩
-              apply no_orphans
-              have := tree.each_successor_none_of_children_empty node h (nodes2 node.length)
-              simp only [InfiniteList.take, List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append]
-              rw [pre.left.left]
-              exact this
-            have nodes_eq_none : tree.tree.infinite_tree (nodes.take n).reverse = none := by
-              apply Option.decidableEqNone.byContradiction
-              intro contra
-              have no_orphans := tree.tree.no_orphans (nodes.take n).reverse contra ⟨(nodes.take (node.length + 1)).reverse, by
-                exists ((nodes.skip (node.length + 1)).take (n - (node.length + 1))).reverse
-                rw [← List.reverse_append]
-                cases Decidable.em (node.length + 1 < n) with
-                | inl lt2 => rw [InfiniteList.combine_skip_take nodes n ⟨node.length+1, lt2⟩]
-                | inr le2 =>
-                  have : node.length + 1 = n := by
-                    apply Nat.eq_of_lt_succ_of_not_lt
-                    . apply Nat.succ_lt_succ; apply Nat.lt_of_not_le; exact lt
-                    . exact le2
-                  rw [this]
-                  simp only [Nat.sub_self, InfiniteList.take, List.append_nil]⟩
-              apply no_orphans
-              have := tree.each_successor_none_of_children_empty node h (nodes node.length)
-              simp only [InfiniteList.take, List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append]
-              rw [nodes_eq]
-              . simp only [Nat.sub_self, List.drop_zero]
-                exact this
-              . simp
-            rw [nodes2_eq_none, nodes_eq_none]
-
-  theorem branches_through_finite_of_each_successor_branches_through_finite (tree : FiniteDegreeTree α) (node : List Nat) : (∀ i, (tree.branches_through (i :: node)).finite) -> (tree.branches_through node).finite := by
-
-    intro h
-    have dec := Classical.typeDecidableEq (PossiblyInfiniteList α)
-
-    cases Option.decidableEqNone.em ((tree.get (0::node)) = none) with
-    | inl childs_empty => apply branches_through_finite_of_children_empty; apply tree.children_empty_of_first_successor_none; exact childs_empty
-    | inr childs_not_empty =>
-      let branches_for_i (i : Nat) := Classical.choose (h i)
-      let target_list : List (PossiblyInfiniteList α) := ((tree.children node).zipIdx_with_lt.map (fun (_, i) => branches_for_i i.val)).flatten.eraseDupsKeepRight
-      exists target_list
-      constructor
-      . apply List.nodup_eraseDupsKeepRight
-      . intro branch
-        unfold target_list
-        rw [List.mem_eraseDupsKeepRight]
-        simp only [List.mem_flatten, List.mem_map, Prod.exists]
-        constructor
-        . intro pre
-          rcases pre with ⟨branches, ex_i, branch_mem⟩
-          rcases ex_i with ⟨_, i, _, eq⟩
-          rw [branches_through_eq_union_branches_through_successors]
-          exists i.val
-          have spec := Classical.choose_spec (h i.val)
-          rw [← spec.right]
-          unfold branches_for_i at eq
-          rw [eq]
-          exact branch_mem
-        . intro pre
-          rw [branches_through_eq_union_branches_through_successors] at pre
-          rcases pre with ⟨i, pre⟩
-          cases Decidable.em (i < (tree.children node).length) with
-          | inl lt =>
-            exists branches_for_i i
+          . rw [PossiblyInfiniteList.head_cons, root_eq]
+          . apply Or.inl
             constructor
-            . let i_fin : Fin (tree.children node).length := ⟨i, lt⟩
-              exists (tree.children node)[i]
-              exists i_fin
-              constructor
-              . rw [List.mem_zipIdx_with_lt_iff_mem_zipIdx]
-                rw [List.mem_zipIdx_iff_getElem?]
-                simp [i_fin]
-              . rfl
-            . have spec := Classical.choose_spec (h i)
-              unfold branches_for_i
-              rw [spec.right]
-              exact pre
-          | inr not_lt =>
-            rcases pre with ⟨nodes, pre⟩
-            apply False.elim
-            apply childs_not_empty
-            have node_eq := pre.left.left
-            unfold InfiniteTreeSkeleton.branch_addresses_through at node_eq
-            simp only [List.length_cons, InfiniteList.take, List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append, Membership.mem] at node_eq
-            rw [List.cons_eq_cons] at node_eq
-            rw [← node_eq.right]
-            apply pre.left.right
-            have : (tree.children node)[nodes node.length]? = none := by
-              apply List.getElem?_eq_none
-              rw [node_eq.left]
-              apply Nat.le_of_not_gt
-              exact not_lt
-            rw [getElem_children_eq_getElem_lifted_children, PossiblyInfiniteTree.getElem_children_eq_get] at this
-            unfold PossiblyInfiniteTree.get at this
-            unfold InfiniteList.take
-            rw [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append]
-            rw [node_eq.right]
-            exact this
+            . exact eq
+            . rw [PossiblyInfiniteList.tail_cons]
+        . rintro ⟨head_eq, tail_eq⟩
+          cases tail_eq with
+          | inr tail_eq => rcases tail_eq with ⟨_, c_mem, _⟩; rw [eq] at c_mem; simp at c_mem
+          | inl tail_eq =>
+            rw [PossiblyInfiniteList.cons_head_tail b r (by rw [head_eq, root_eq])]
+            rw [tail_eq.right]
+      | cons _ _ =>
+        let branch_list := t.childTrees.attach.flatMap (fun c => Classical.choose (children_finite c.val c.property))
 
-  noncomputable def infinite_branching_node_for_depth_of_branches_infinite (tree : FiniteDegreeTree α) (not_finite : ¬ tree.branches.finite) : (depth : Nat) -> { node : List Nat // node.length = depth ∧ ¬ (tree.branches_through node).finite }
-  | .zero => ⟨[], by constructor; rfl; exact not_finite⟩
-  | .succ depth =>
-    let prev_res := infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth
-    let prev_node := prev_res.val
-    let length_eq := prev_res.property.left
-    let not_finite := prev_res.property.right
-    have : ¬ ∀ i, (tree.branches_through (i :: prev_node)).finite := by
+        -- TODO: can we get rid of the Classical here?
+        have dec := Classical.typeDecidableEq (PossiblyInfiniteList α)
+
+        apply Set.finite_of_list_with_same_elements (branch_list.map (fun b => PossiblyInfiniteList.cons r b))
+        intro b
+        rw [List.mem_map, branches_eq]
+        constructor
+        . rintro ⟨tail, tail_mem, b_eq⟩
+          rw [← b_eq]
+          constructor
+          . rw [PossiblyInfiniteList.head_cons]; rw [root_eq]
+          . apply Or.inr
+            rw [List.mem_flatMap] at tail_mem
+            rcases tail_mem with ⟨c, c_mem, tail_mem⟩
+            have spec := Classical.choose_spec (children_finite c.val c.property)
+            exists c.val
+            constructor
+            . exact c.property
+            . rw [PossiblyInfiniteList.tail_cons]; rw [← spec.right]; exact tail_mem
+        . rintro ⟨head_eq, tail_eq⟩
+          cases tail_eq with
+          | inl tail_eq => rw [tail_eq.left] at eq; simp at eq
+          | inr tail_eq =>
+            rcases tail_eq with ⟨c, c_mem, tail_mem⟩
+            have spec := Classical.choose_spec (children_finite c c_mem)
+            exists b.tail
+            constructor
+            . rw [List.mem_flatMap]; exists ⟨c, c_mem⟩; rw [spec.right]; simp [tail_mem]
+            . rw [PossiblyInfiniteList.cons_head_tail b r (by rw [head_eq, root_eq]), PossiblyInfiniteList.tail_cons]
+
+  noncomputable def infinite_branching_child_index_of_branches_infinite (t : FiniteDegreeTree α) (not_finite : ¬ t.branches.finite) : { n : Nat // ∃ (lt : n < t.childTrees.length), ¬ t.childTrees[n].val.branches.finite } :=
+    have : ¬ (∀ c ∈ t.childTrees, c.val.branches.finite) := by
       intro contra
       apply not_finite
-      apply branches_through_finite_of_each_successor_branches_through_finite
+      apply branches_finite_of_each_child_branches_finite
       exact contra
-    have : ∃ i, ¬ (tree.branches_through (i :: prev_node)).finite := by simp at this; exact this
+    have : ∃ (i : Nat) (lt : i < t.childTrees.length), ¬ t.childTrees[i].val.branches.finite := by
+      simp at this
+      rcases this with ⟨c, ⟨_, c_mem⟩, fin⟩
+      rw [List.mem_iff_getElem] at c_mem
+      rcases c_mem with ⟨i, lt, c_mem⟩
+      exists i, lt
+      rw [c_mem]
+      exact fin
     let i := Classical.choose this
     let i_spec := Classical.choose_spec this
+    ⟨i, i_spec⟩
 
-    ⟨i :: prev_node, by
+  noncomputable def infinite_branching_node_at_depth_of_branches_infinite (t : FiniteDegreeTree α) (not_finite : ¬ t.branches.finite) : (depth : Nat) -> { ns : List Nat // ns.length = depth ∧ ¬ (t.drop ns).branches.finite }
+  | .zero => ⟨[], by constructor; simp; exact not_finite⟩
+  | .succ depth =>
+    let prev_result := t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth
+    let step_result := (t.drop prev_result.val).infinite_branching_child_index_of_branches_infinite prev_result.property.right
+    ⟨prev_result.val ++ [step_result.val], by
       constructor
-      . simp; exact length_eq
-      . exact i_spec
-    ⟩
+      . rw [List.length_append, prev_result.property.left]; simp
+      . rcases step_result.property with ⟨lt, step_prop⟩
+        rw [get_childTrees, drop_drop] at step_prop
+        exact step_prop⟩
 
-  theorem infinite_branching_node_extends_previous (tree : FiniteDegreeTree α) (not_finite : ¬ tree.branches.finite) (depth : Nat) : (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth.succ).val = (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth.succ).val.head (by simp [infinite_branching_node_for_depth_of_branches_infinite]) :: (infinite_branching_node_for_depth_of_branches_infinite tree not_finite depth).val := by
-    simp [infinite_branching_node_for_depth_of_branches_infinite]
+  theorem infinite_branching_node_at_depth_extends_previous {t : FiniteDegreeTree α} {not_finite : ¬ t.branches.finite} {depth : Nat} : (t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth.succ).val = (t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth).val ++ [(t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth.succ).val.getLast (by simp [infinite_branching_node_at_depth_of_branches_infinite])] := by
+    simp [infinite_branching_node_at_depth_of_branches_infinite]
 
-  theorem branches_finite_of_each_branch_finite (tree : FiniteDegreeTree α) : (∀ branch, branch ∈ tree.branches -> ∃ i, branch.infinite_list i = none) -> tree.branches.finite := by
-    intro h
-
+  -- König's Lemma
+  theorem branches_finite_of_each_branch_finite (t : FiniteDegreeTree α) : (∀ b ∈ t.branches, b.finite) -> t.branches.finite := by
+    intro all_finite
     apply Classical.byContradiction
     intro contra
-    simp at contra
 
-    have : ∃ (nodes : InfiniteList Nat), ∀ (i : Nat), ¬ (tree.branches_through (nodes.take i).reverse).finite := by
-      let nodes : InfiniteList Nat := fun n => (infinite_branching_node_for_depth_of_branches_infinite tree contra n.succ).val.head (by
-        simp [infinite_branching_node_for_depth_of_branches_infinite]
-      )
-      have : ∀ i, (nodes.take i).reverse = (infinite_branching_node_for_depth_of_branches_infinite tree contra i).val := by
-        intro i
-        induction i with
-        | zero => simp [InfiniteList.take, infinite_branching_node_for_depth_of_branches_infinite]
+    have : ∃ (ns : InfiniteList Nat), ∀ (n : Nat), ¬ (t.drop (ns.take n)).branches.finite := by
+      let ns : InfiniteList Nat := fun n =>
+        (t.infinite_branching_node_at_depth_of_branches_infinite contra n.succ).val.getLast
+          (by simp [infinite_branching_node_at_depth_of_branches_infinite])
+      have : ∀ n, ns.take n = (t.infinite_branching_node_at_depth_of_branches_infinite contra n).val := by
+        intro n
+        induction n with
+        | zero => simp [InfiniteList.take, infinite_branching_node_at_depth_of_branches_infinite]
         | succ i ih =>
-          unfold InfiniteList.take
-          unfold nodes
-          simp
+          rw [InfiniteList.take_succ']
           rw [ih]
-          conv => right; rw [infinite_branching_node_extends_previous]
-      exists nodes
-      intro i
+          rw [infinite_branching_node_at_depth_extends_previous]
+          rfl
+      exists ns
+      intro n
       rw [this]
-      have prop := (infinite_branching_node_for_depth_of_branches_infinite tree contra i).property
-      exact prop.right
+      exact (t.infinite_branching_node_at_depth_of_branches_infinite contra n).property.right
 
-    rcases this with ⟨nodes, all_infinite⟩
+    rcases this with ⟨ns, all_infinite⟩
 
-    let branch : PossiblyInfiniteList α := ⟨fun n => tree.get (nodes.take n).reverse, by
-      intro n not_none m contra
-      apply all_infinite m.val
-      apply branches_through_finite_of_get_eq_none
-      exact contra
-    ⟩
+    let branch := t.tree.branchForAddress ns
 
-    specialize h branch (by
-      exists nodes
+    specialize all_finite branch (by
+      exists ns
       constructor
-      . constructor
-        . rfl
-        . intro n contra
-          apply False.elim
-          apply all_infinite (n+1)
-          apply branches_through_finite_of_get_eq_none
-          exact contra
       . rfl
+      . intro n contra
+        rw [PossiblyInfiniteTree.get?_branchForAddress] at contra
+        apply False.elim
+        apply all_infinite n.succ
+        apply branches_finite_of_root_none
+        rw [root_drop]
+        exact contra
     )
 
-    rcases h with ⟨i, hi⟩
-    apply all_infinite i
-    apply branches_through_finite_of_get_eq_none
-    exact hi
+    rcases all_finite with ⟨n, eq_none⟩
+    apply all_infinite n
+    apply branches_finite_of_root_none
+    rw [root_drop]
+    exact eq_none
 
 end FiniteDegreeTree
 
