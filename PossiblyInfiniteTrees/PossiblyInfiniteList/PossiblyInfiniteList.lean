@@ -23,7 +23,7 @@ namespace PossiblyInfiniteList
       have no_holes_rec := (fromList as).no_holes
       intro n
       cases n with
-      | zero => simp; intro m; have contra := m.isLt; contradiction
+      | zero => simp
       | succ n =>
         simp
         intro h m

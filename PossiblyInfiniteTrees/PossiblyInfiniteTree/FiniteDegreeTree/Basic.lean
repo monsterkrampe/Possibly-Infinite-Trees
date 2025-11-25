@@ -103,7 +103,7 @@ namespace FiniteDegreeTree
       intro el n m
 
       induction m with
-      | zero => simp; intro i; have contra := i.isLt; contradiction
+      | zero => simp
       | succ m ih =>
         rw [ih]
         constructor
