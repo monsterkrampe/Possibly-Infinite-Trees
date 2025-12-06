@@ -48,6 +48,26 @@ namespace InfiniteList
   theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
     intros; unfold tail; apply ext; intro n; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
 
+  -- a recursor for proving properties about list members via induction
+  theorem mem_rec
+      {motive : α -> Prop}
+      {l : InfiniteList α}
+      {a : α}
+      (a_mem : a ∈ l)
+      (head : motive l.head)
+      (step : ∀ n, motive (l.drop n).head -> motive (l.drop n).tail.head) :
+      motive a := by
+    rcases a_mem with ⟨n, a_mem⟩
+    induction n generalizing a with
+    | zero => rw [← a_mem]; exact head
+    | succ n ih =>
+      specialize step n
+      simp only [head_drop, tail_drop] at step
+      rw [← a_mem]
+      apply step
+      apply ih
+      rfl
+
   def map (l : InfiniteList α) (f : α -> β) : InfiniteList β := fun n => f (l.get n)
 
   theorem get_map {l : InfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get n = f (l.get n) := by rfl
