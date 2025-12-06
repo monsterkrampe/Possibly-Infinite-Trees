@@ -2,6 +2,7 @@
 -- Still I keep this separate to see better what is actually needed
 -- and since what we need should be simple enough.
 
+import BasicLeanDatastructures.Option
 import PossiblyInfiniteTrees.PossiblyInfiniteList.InfiniteList
 
 def InfiniteList.no_holes (l : InfiniteList (Option α)) : Prop := ∀ n : Nat, l.get n = none -> l.get n.succ = none
@@ -102,6 +103,36 @@ namespace PossiblyInfiniteList
       rw [get?_empty]
       apply l.no_holes
       exact ih
+
+  -- a recursor for proving properties about list members via induction
+  theorem mem_rec
+      {motive : α -> Prop}
+      {l : PossiblyInfiniteList α}
+      {a : α}
+      (a_mem : a ∈ l)
+      (head : l.head.is_none_or motive)
+      (step : ∀ n, (l.drop n).head.is_some_and motive -> (l.drop n).tail.head.is_none_or motive) :
+      motive a := by
+    let motive' (o : Option α) : Prop := o.is_none_or motive
+    have : motive' (some a) := by
+      -- TODO: understand why `induction a_mem using InfiniteList.mem_rec` does not work here.
+      apply InfiniteList.mem_rec a_mem
+      . exact head
+      . intro n h
+        cases eq : (l.infinite_list.drop n).head with
+        | none => simp only [InfiniteList.head_drop, InfiniteList.tail_drop, motive']; rw [l.no_holes]; simp [Option.is_none_or]; exact eq
+        | some b =>
+          apply step
+          rw [Option.is_some_and_iff]
+          exists b; constructor
+          . exact eq
+          . unfold motive' at h
+            rw [Option.is_none_or_iff] at h
+            apply h
+            exact eq
+    unfold motive' at this
+    rw [Option.is_none_or_iff] at this
+    exact this a rfl
 
   def map (l : PossiblyInfiniteList α) (f : α -> β) : PossiblyInfiniteList β where
     infinite_list := l.infinite_list.map (fun o => o.map f)
