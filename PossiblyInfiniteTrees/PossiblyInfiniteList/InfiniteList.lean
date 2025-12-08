@@ -13,6 +13,10 @@ namespace InfiniteList
 
   def drop (l : InfiniteList α) (n : Nat) : InfiniteList α := fun i => l.get (n + i)
 
+  -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
+  def IsSuffix (l1 l2 : InfiniteList α) : Prop := ∃ n, l2.drop n = l1
+  infixl:50 " <:+ " => IsSuffix
+
   theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n + i) := by rfl
 
   theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by
@@ -24,6 +28,10 @@ namespace InfiniteList
     . exact ext
 
   theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by apply ext; intro n; rw [get_drop, Nat.zero_add]
+
+  theorem IsSuffix_refl {l : InfiniteList α} : l <:+ l := by exists 0; exact l.drop_zero
+
+  theorem IsSuffix_drop {l : InfiniteList α} : ∀ n, l.drop n <:+ l := by intro n; exists n
 
   def cons (hd : α) (tl : InfiniteList α) : InfiniteList α
   | .zero => hd
@@ -48,6 +56,8 @@ namespace InfiniteList
   theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
     intros; unfold tail; apply ext; intro n; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
 
+  theorem IsSuffix_tail {l : InfiniteList α} : l.tail <:+ l := by exists 1; apply ext; intro n; rw [get_drop, get_tail, Nat.add_comm]
+
   -- a recursor for proving properties about list members via induction
   theorem mem_rec
       {motive : α -> Prop}
@@ -55,13 +65,13 @@ namespace InfiniteList
       {a : α}
       (a_mem : a ∈ l)
       (head : motive l.head)
-      (step : ∀ n, motive (l.drop n).head -> motive (l.drop n).tail.head) :
+      (step : ∀ l2, l2 <:+ l -> motive l2.head -> motive l2.tail.head) :
       motive a := by
     rcases a_mem with ⟨n, a_mem⟩
     induction n generalizing a with
     | zero => rw [← a_mem]; exact head
     | succ n ih =>
-      specialize step n
+      specialize step (l.drop n) (l.IsSuffix_drop n)
       simp only [head_drop, tail_drop] at step
       rw [← a_mem]
       apply step
