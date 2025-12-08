@@ -45,6 +45,15 @@ namespace PossiblyInfiniteList
     infinite_list := l.infinite_list.drop n
     no_holes := by intro n'; rw [InfiniteList.get_drop, InfiniteList.get_drop, Nat.add_succ]; exact l.no_holes (n + n')
 
+  -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
+  def IsSuffix (l1 l2 : PossiblyInfiniteList α) : Prop := l1.infinite_list <:+ l2.infinite_list
+  infixl:50 " <:+ " => IsSuffix
+
+  theorem IsSuffix_iff {l1 l2 : PossiblyInfiniteList α} : l1 <:+ l2 ↔ ∃ n, l2.drop n = l1 := by
+    constructor
+    . rintro ⟨n, h⟩; exists n; simp [drop, h]
+    . rintro ⟨n, h⟩; exists n; simp only [drop] at h; rw [← h]
+
   theorem get?_drop {l : PossiblyInfiniteList α} {n i : Nat} : (l.drop n).get? i = l.get? (n + i) := by rfl
 
   theorem ext {l1 l2 : PossiblyInfiniteList α} : (∀ n, l1.get? n = l2.get? n) -> l1 = l2 := by
@@ -57,6 +66,10 @@ namespace PossiblyInfiniteList
 
   theorem drop_zero {l : PossiblyInfiniteList α} : l.drop 0 = l := by
     rw [PossiblyInfiniteList.mk.injEq]; exact InfiniteList.drop_zero
+
+  theorem IsSuffix_refl {l : PossiblyInfiniteList α} : l <:+ l := l.infinite_list.IsSuffix_refl
+
+  theorem IsSuffix_drop {l : PossiblyInfiniteList α} : ∀ n, l.drop n <:+ l := l.infinite_list.IsSuffix_drop
 
   def cons (hd : α) (tl : PossiblyInfiniteList α) : PossiblyInfiniteList α where
     infinite_list := InfiniteList.cons (.some hd) tl.infinite_list
@@ -104,6 +117,8 @@ namespace PossiblyInfiniteList
       apply l.no_holes
       exact ih
 
+  theorem IsSuffix_tail {l : PossiblyInfiniteList α} : l.tail <:+ l := l.infinite_list.IsSuffix_tail
+
   -- a recursor for proving properties about list members via induction
   theorem mem_rec
       {motive : α -> Prop}
@@ -111,17 +126,20 @@ namespace PossiblyInfiniteList
       {a : α}
       (a_mem : a ∈ l)
       (head : l.head.is_none_or motive)
-      (step : ∀ n, (l.drop n).head.is_some_and motive -> (l.drop n).tail.head.is_none_or motive) :
+      (step : ∀ l2, l2 <:+ l -> l2.head.is_some_and motive -> l2.tail.head.is_none_or motive) :
       motive a := by
     let motive' (o : Option α) : Prop := o.is_none_or motive
     have : motive' (some a) := by
       -- TODO: understand why `induction a_mem using InfiniteList.mem_rec` does not work here.
       apply InfiniteList.mem_rec a_mem
       . exact head
-      . intro n h
+      . intro l2 suffix h
+        rcases suffix with ⟨n, suffix⟩
+        rw [← suffix]
         cases eq : (l.infinite_list.drop n).head with
         | none => simp only [InfiniteList.head_drop, InfiniteList.tail_drop, motive']; rw [l.no_holes]; simp [Option.is_none_or]; exact eq
         | some b =>
+          specialize step (l.drop n) (l.IsSuffix_drop n)
           apply step
           rw [Option.is_some_and_iff]
           exists b; constructor
@@ -129,6 +147,7 @@ namespace PossiblyInfiniteList
           . unfold motive' at h
             rw [Option.is_none_or_iff] at h
             apply h
+            rw [← suffix]
             exact eq
     unfold motive' at this
     rw [Option.is_none_or_iff] at this
