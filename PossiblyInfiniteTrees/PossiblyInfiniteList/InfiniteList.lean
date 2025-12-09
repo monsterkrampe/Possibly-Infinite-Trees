@@ -33,6 +33,24 @@ namespace InfiniteList
 
   theorem IsSuffix_drop {l : InfiniteList α} : ∀ n, l.drop n <:+ l := by intro n; exists n
 
+  -- same statement as List.suffix_or_suffix_of_suffix
+  theorem suffix_or_suffix_of_suffix {l1 l2 l3 : InfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := by
+    rintro ⟨n, eq⟩ ⟨n2, eq2⟩
+    cases Decidable.em (n2 ≤ n) with
+    | inl le =>
+      apply Or.inl
+      exists (n - n2)
+      apply ext
+      intro n3
+      rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
+    | inr le =>
+      have le := Nat.le_of_not_le le
+      apply Or.inr
+      exists (n2 - n)
+      apply ext
+      intro n3
+      rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
+
   def cons (hd : α) (tl : InfiniteList α) : InfiniteList α
   | .zero => hd
   | .succ n => tl n
