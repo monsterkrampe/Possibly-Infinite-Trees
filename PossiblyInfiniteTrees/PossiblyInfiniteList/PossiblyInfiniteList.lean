@@ -71,6 +71,9 @@ namespace PossiblyInfiniteList
 
   theorem IsSuffix_drop {l : PossiblyInfiniteList α} : ∀ n, l.drop n <:+ l := l.infinite_list.IsSuffix_drop
 
+  -- same statement as List.suffix_or_suffix_of_suffix
+  theorem suffix_or_suffix_of_suffix {l1 l2 l3 : PossiblyInfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := InfiniteList.suffix_or_suffix_of_suffix
+
   def cons (hd : α) (tl : PossiblyInfiniteList α) : PossiblyInfiniteList α where
     infinite_list := InfiniteList.cons (.some hd) tl.infinite_list
     no_holes := by
