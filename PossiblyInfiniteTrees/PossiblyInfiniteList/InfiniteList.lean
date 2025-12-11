@@ -33,6 +33,14 @@ namespace InfiniteList
 
   theorem IsSuffix_drop {l : InfiniteList α} : ∀ n, l.drop n <:+ l := by intro n; exists n
 
+  theorem IsSuffix_trans {l1 l2 l3 : InfiniteList α} : l1 <:+ l2 -> l2 <:+ l3 -> l1 <:+ l3 := by
+    rintro ⟨n1, h1⟩ ⟨n2, h2⟩
+    exists (n2 + n1)
+    rw [← h1, ← h2]
+    apply ext
+    intro n
+    simp only [get_drop, ← Nat.add_assoc]
+
   -- same statement as List.suffix_or_suffix_of_suffix
   theorem suffix_or_suffix_of_suffix {l1 l2 l3 : InfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := by
     rintro ⟨n, eq⟩ ⟨n2, eq2⟩
