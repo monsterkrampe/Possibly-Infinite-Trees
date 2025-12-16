@@ -11,6 +11,10 @@ namespace InfiniteList
   instance : Membership α (InfiniteList α) where
     mem l a := ∃ n, l.get n = a
 
+  theorem get_mem {l : InfiniteList α} {n : Nat} : l.get n ∈ l := by exists n
+
+  def Element (l : InfiniteList α) := { e : α // e ∈ l }
+
   def drop (l : InfiniteList α) (n : Nat) : InfiniteList α := fun i => l.get (n + i)
 
   -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
@@ -18,6 +22,13 @@ namespace InfiniteList
   infixl:50 " <:+ " => IsSuffix
 
   theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n + i) := by rfl
+
+  theorem mem_of_mem_suffix {l1 l2 : InfiniteList α} (suffix : l1 <:+ l2) : ∀ e ∈ l1, e ∈ l2 := by
+    rintro e ⟨n, e_eq⟩
+    rcases suffix with ⟨m, suffix⟩
+    exists m + n
+    rw [← suffix, get_drop] at e_eq
+    exact e_eq
 
   theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by
     apply funext
@@ -71,6 +82,7 @@ namespace InfiniteList
 
   theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := rfl
 
+  theorem head_mem {l : InfiniteList α} : l.head ∈ l := l.get_mem (n := 0)
   theorem head_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).head = hd := by rfl
   theorem tail_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).tail = tl := by rfl
 
@@ -86,23 +98,24 @@ namespace InfiniteList
 
   -- a recursor for proving properties about list members via induction
   theorem mem_rec
-      {motive : α -> Prop}
       {l : InfiniteList α}
-      {a : α}
-      (a_mem : a ∈ l)
-      (head : motive l.head)
-      (step : ∀ l2, l2 <:+ l -> motive l2.head -> motive l2.tail.head) :
+      {motive : Element l -> Prop}
+      (head : motive ⟨l.head, l.head_mem⟩)
+      (step : ∀ l2, (suffix : l2 <:+ l) -> motive ⟨l2.head, l2.mem_of_mem_suffix suffix _ l2.head_mem⟩ -> motive ⟨l2.tail.head, l2.tail.mem_of_mem_suffix (IsSuffix_trans l2.IsSuffix_tail suffix) _ l2.tail.head_mem⟩)
+      (a : Element l) :
       motive a := by
-    rcases a_mem with ⟨n, a_mem⟩
+    rcases a.property with ⟨n, a_mem⟩
+    have a_mem : a = ⟨l.get n, l.get_mem⟩ := by simp only [a_mem]; rfl
     induction n generalizing a with
-    | zero => rw [← a_mem]; exact head
+    | zero => rw [a_mem]; exact head
     | succ n ih =>
       specialize step (l.drop n) (l.IsSuffix_drop n)
       simp only [head_drop, tail_drop] at step
-      rw [← a_mem]
+      rw [a_mem]
       apply step
       apply ih
-      rfl
+      . rfl
+      . rfl
 
   def map (l : InfiniteList α) (f : α -> β) : InfiniteList β := fun n => f (l.get n)
 
