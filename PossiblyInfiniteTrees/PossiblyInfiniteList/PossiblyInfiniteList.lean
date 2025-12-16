@@ -2,7 +2,6 @@
 -- Still I keep this separate to see better what is actually needed
 -- and since what we need should be simple enough.
 
-import BasicLeanDatastructures.Option
 import PossiblyInfiniteTrees.PossiblyInfiniteList.InfiniteList
 
 def InfiniteList.no_holes (l : InfiniteList (Option α)) : Prop := ∀ n : Nat, l.get n = none -> l.get n.succ = none
@@ -27,6 +26,8 @@ namespace PossiblyInfiniteList
     mem l a := some a ∈ l.infinite_list
 
   theorem mem_iff {l : PossiblyInfiniteList α} : ∀ {e}, e ∈ l ↔ ∃ n, l.get? n = some e := by rfl
+
+  def Element (l : PossiblyInfiniteList α) := { e : α // e ∈ l }
 
   theorem get?_eq_none_of_le_of_eq_none {l : PossiblyInfiniteList α} {n : Nat} :
       l.get? n = none -> ∀ m, n ≤ m -> l.get? m = none := by
@@ -55,6 +56,9 @@ namespace PossiblyInfiniteList
     . rintro ⟨n, h⟩; exists n; simp only [drop] at h; rw [← h]
 
   theorem get?_drop {l : PossiblyInfiniteList α} {n i : Nat} : (l.drop n).get? i = l.get? (n + i) := by rfl
+
+  theorem mem_of_mem_suffix {l1 l2 : PossiblyInfiniteList α} (suffix : l1 <:+ l2) : ∀ e ∈ l1, e ∈ l2 := by
+    intro e mem; apply InfiniteList.mem_of_mem_suffix suffix; exact mem
 
   theorem ext {l1 l2 : PossiblyInfiniteList α} : (∀ n, l1.get? n = l2.get? n) -> l1 = l2 := by
     intro h; rw [PossiblyInfiniteList.mk.injEq]; apply InfiniteList.ext; exact h
@@ -91,6 +95,8 @@ namespace PossiblyInfiniteList
   theorem get?_cons_succ {hd : α} {tl : PossiblyInfiniteList α} : ∀ n, (cons hd tl).get? n.succ = tl.get? n := by intro n; unfold get?; unfold cons; rw [InfiniteList.get_cons_succ]
 
   def head (l : PossiblyInfiniteList α) : Option α := l.infinite_list.head
+  theorem head_mem {l : PossiblyInfiniteList α} : ∀ h ∈ l.head, h ∈ l := by intro h h_mem; rw [Option.mem_def] at h_mem; simp only [Membership.mem, ← h_mem]; exact l.infinite_list.head_mem
+
   def tail (l : PossiblyInfiniteList α) : PossiblyInfiniteList α where
     infinite_list := l.infinite_list.tail
     no_holes := by intro n; rw [InfiniteList.get_tail, InfiniteList.get_tail]; exact l.no_holes n.succ
@@ -126,37 +132,32 @@ namespace PossiblyInfiniteList
 
   -- a recursor for proving properties about list members via induction
   theorem mem_rec
-      {motive : α -> Prop}
       {l : PossiblyInfiniteList α}
-      {a : α}
-      (a_mem : a ∈ l)
-      (head : l.head.is_none_or motive)
-      (step : ∀ l2, l2 <:+ l -> l2.head.is_some_and motive -> l2.tail.head.is_none_or motive) :
+      {motive : Element l -> Prop}
+      (head : ∀ head, (mem : head ∈ l.head) -> motive ⟨head, head_mem _ mem⟩)
+      (step : ∀ l2, (suffix : l2 <:+ l) -> (∃ (head : α) (mem : head ∈ l2.head), motive ⟨head, l2.mem_of_mem_suffix suffix _ (l2.head_mem _ mem)⟩) -> ∀ tail_head, (mem_th : tail_head ∈ l2.tail.head) -> motive ⟨tail_head, l2.tail.mem_of_mem_suffix (IsSuffix_trans l2.IsSuffix_tail suffix) _ (l2.tail.head_mem _ mem_th)⟩)
+      (a : Element l) :
       motive a := by
-    let motive' (o : Option α) : Prop := o.is_none_or motive
-    have : motive' (some a) := by
-      -- TODO: understand why `induction a_mem using InfiniteList.mem_rec` does not work here.
-      apply InfiniteList.mem_rec a_mem
-      . exact head
-      . intro l2 suffix h
+    let motive' (o : l.infinite_list.Element) : Prop := ∀ v, (mem : v ∈ o.val) -> motive ⟨v, by have := o.property; rw [Option.mem_def] at mem; rw [mem] at this; exact this⟩
+    let a' : l.infinite_list.Element := ⟨some a.val, a.property⟩
+    have : motive' a' := by
+      induction a' using InfiniteList.mem_rec with
+      | head => exact head
+      | step l2 suffix ih =>
         rcases suffix with ⟨n, suffix⟩
-        rw [← suffix]
+        simp only [← suffix]
         cases eq : (l.infinite_list.drop n).head with
-        | none => simp only [InfiniteList.head_drop, InfiniteList.tail_drop, motive']; rw [l.no_holes]; simp [Option.is_none_or]; exact eq
+        | none => simp only [InfiniteList.head_drop, InfiniteList.tail_drop, motive']; intro _ mem; rw [Option.mem_def, l.no_holes] at mem; simp at mem; exact eq
         | some b =>
           specialize step (l.drop n) (l.IsSuffix_drop n)
           apply step
-          rw [Option.is_some_and_iff]
-          exists b; constructor
-          . exact eq
-          . unfold motive' at h
-            rw [Option.is_none_or_iff] at h
-            apply h
-            rw [← suffix]
-            exact eq
-    unfold motive' at this
-    rw [Option.is_none_or_iff] at this
-    exact this a rfl
+          exists b, eq
+          unfold motive' at ih
+          apply ih
+          simp only [← suffix]
+          exact eq
+    apply this
+    rfl
 
   def map (l : PossiblyInfiniteList α) (f : α -> β) : PossiblyInfiniteList β where
     infinite_list := l.infinite_list.map (fun o => o.map f)
