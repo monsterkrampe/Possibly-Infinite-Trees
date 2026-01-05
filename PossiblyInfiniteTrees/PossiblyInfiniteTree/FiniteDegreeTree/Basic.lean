@@ -16,15 +16,33 @@ namespace FiniteDegreeTree
 
   def get? (t : FiniteDegreeTree α) (ns : List Nat) : Option α := t.tree.get? ns
 
+  instance : Membership α (FiniteDegreeTree α) where
+    mem t a := a ∈ t.tree
+
+  theorem mem_iff {t : FiniteDegreeTree α} : ∀ {e}, e ∈ t ↔ ∃ ns, t.get? ns = some e := by rfl
+
+  def Element (t : FiniteDegreeTree α) := { e : α // e ∈ t }
+
   def drop (t : FiniteDegreeTree α) (ns : List Nat) : FiniteDegreeTree α where
     tree := t.tree.drop ns
     finitely_many_children := by intro ns'; rw [PossiblyInfiniteTree.drop_drop]; exact t.finitely_many_children (ns ++ ns')
+
+  -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
+  def IsSuffix (t1 t2 : FiniteDegreeTree α) : Prop := t1.tree <:+ t2.tree
+  infixl:50 " <:+ " => IsSuffix
+
+  theorem IsSuffix_iff {t1 t2 : FiniteDegreeTree α} : t1 <:+ t2 ↔ ∃ ns, t2.drop ns = t1 := by
+    constructor
+    . rintro ⟨ns, h⟩; exists ns; simp [drop, PossiblyInfiniteTree.drop, h]
+    . rintro ⟨ns, h⟩; exists ns; simp only [drop, PossiblyInfiniteTree.drop] at h; rw [← h]
 
   theorem drop_nil {t : FiniteDegreeTree α} : t.drop [] = t := by rfl
 
   theorem get?_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).get? ns' = t.get? (ns ++ ns') := by rfl
 
   theorem drop_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).drop ns' = t.drop (ns ++ ns') := by simp [drop, PossiblyInfiniteTree.drop_drop]
+
+  theorem mem_of_mem_suffix {t1 t2 : FiniteDegreeTree α} (suffix : t1 <:+ t2) : ∀ e ∈ t1, e ∈ t2 := PossiblyInfiniteTree.mem_of_mem_suffix suffix
 
   theorem ext {t1 t2 : FiniteDegreeTree α} : (∀ ns, t1.get? ns = t2.get? ns) -> t1 = t2 := by
     intro h; rw [FiniteDegreeTree.mk.injEq]; apply PossiblyInfiniteTree.ext; exact h
@@ -34,7 +52,15 @@ namespace FiniteDegreeTree
     . intro h _; rw [h]
     . exact ext
 
+  theorem IsSuffix_refl {t : FiniteDegreeTree α} : t <:+ t := t.tree.IsSuffix_refl
+
+  theorem IsSuffix_drop {t : FiniteDegreeTree α} : ∀ ns, t.drop ns <:+ t := t.tree.IsSuffix_drop
+
+  theorem IsSuffix_trans {t1 t2 t3 : FiniteDegreeTree α} : t1 <:+ t2 -> t2 <:+ t3 -> t1 <:+ t3 := PossiblyInfiniteTree.IsSuffix_trans
+
   def root (t : FiniteDegreeTree α) : Option α := t.tree.root
+
+  theorem root_mem {t : FiniteDegreeTree α} : ∀ r ∈ t.root, r ∈ t := t.tree.root_mem
 
   theorem root_eq {t : FiniteDegreeTree α} : t.root = t.get? [] := by rfl
 
@@ -128,6 +154,22 @@ namespace FiniteDegreeTree
       rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff] at t'_mem
       rw [← t'_mem.left]
       exact t.finitely_many_children (n::ns)))
+
+  theorem mem_childTrees_iff {t : FiniteDegreeTree α} : ∀ c, c ∈ t.childTrees ↔ c.to_possibly_infinite ∈ t.tree.childTrees := by
+    intro c
+    simp only [childTrees, List.mem_map, List.mem_attach, true_and]
+    constructor
+    . rintro ⟨⟨d, d_mem⟩, c_eq⟩
+      rw [← c_eq]
+      rw [FiniteDegreeTreeWithRoot.to_possibly_infinite_after_from_possibly_infinite]
+      rw [PossiblyInfiniteList.mem_toList_of_finite] at d_mem
+      exact d_mem
+    . intro c_mem
+      exists ⟨c.to_possibly_infinite, by rw [PossiblyInfiniteList.mem_toList_of_finite]; exact c_mem⟩
+
+  theorem IsSuffix_of_mem_childTrees {t : FiniteDegreeTree α} : ∀ c ∈ t.childTrees, c.val <:+ t := by
+    intro c c_mem; rw [mem_childTrees_iff] at c_mem
+    exact t.tree.IsSuffix_of_mem_childTrees _ c_mem
 
   def node (root : α) (childTrees : List (FiniteDegreeTreeWithRoot α)) : FiniteDegreeTree α where
     tree := PossiblyInfiniteTree.node root (PossiblyInfiniteList.from_list (childTrees.map FiniteDegreeTreeWithRoot.to_possibly_infinite))
@@ -237,6 +279,25 @@ namespace FiniteDegreeTree
 
   theorem get_childNodes {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childNodes.length) -> t.childNodes[n] = (t.childTrees[n]'(by rw [← length_childNodes]; exact lt)).val.root := by
     intro n lt; rw [List.getElem_eq_getElem?_get, Option.some_get, get?_childNodes, get?_childTrees, FiniteDegreeTreeWithRoot.opt_to_tree_after_tree_to_opt, get_childTrees]
+
+  theorem mem_of_mem_childNodes {t : FiniteDegreeTree α} : ∀ c ∈ t.childNodes, c ∈ t := by
+    intro c c_mem; apply t.tree.mem_of_mem_childNodes; unfold childNodes at c_mem; rw [PossiblyInfiniteList.mem_toList_of_finite] at c_mem; exact c_mem
+
+  theorem mem_rec
+      {t : FiniteDegreeTree α}
+      {motive : Element t -> Prop}
+      (root : ∀ r, (mem : r ∈ t.root) -> motive ⟨r, root_mem _ mem⟩)
+      (step : ∀ t2, (suffix : t2 <:+ t) -> (∃ (r : α) (mem : r ∈ t2.root), motive ⟨r, t2.mem_of_mem_suffix suffix _ (t2.root_mem _ mem)⟩) -> ∀ {c}, (mem : c ∈ t2.childNodes) -> motive ⟨c, mem_of_mem_suffix suffix _ (mem_of_mem_childNodes _ mem)⟩)
+      (a : Element t) :
+      motive a := by
+    induction a using PossiblyInfiniteTree.mem_rec with
+    | root r r_mem => exact root r r_mem
+    | step t2 suffix ih c_mem =>
+      rw [PossiblyInfiniteTree.IsSuffix_iff] at suffix
+      rcases suffix with ⟨ns, suffix⟩
+      apply step (t.drop ns) (t.IsSuffix_drop ns)
+      . rcases ih with ⟨r, r_mem, ih⟩; rw [← suffix] at r_mem; exists r, r_mem
+      . rw [← suffix] at c_mem; unfold childNodes; rw [PossiblyInfiniteList.mem_toList_of_finite]; exact c_mem
 
   theorem no_orphans {t : FiniteDegreeTree α} : ∀ ns : List Nat, t.get? ns = none -> ∀ n : Nat, (t.drop ns).childNodes[n]? = none := by intro ns eq_none n; unfold childNodes; rw [PossiblyInfiniteList.getElem?_toList_of_finite]; apply t.tree.no_orphans'; exact eq_none
 
