@@ -145,5 +145,21 @@ namespace InfiniteList
     | zero => simp [take_zero]
     | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
 
+  -- This is essentially Stream'.iterate from Mathlib
+  def iterate (start : α) (generator : α -> α) : InfiniteList α
+  | .zero => start
+  | .succ n => generator (iterate start generator n)
+
+  -- This is essentially the same as Stream'.corec from Mathlib
+  def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
+
+  theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).head = mapper start := rfl
+
+  theorem get_generate {start : α} {generator : α -> α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get n = mapper ((iterate start generator).get n) := by intros; rfl
+
+  theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get n.succ = mapper (generator ((iterate start generator).get n)) := by intros; rfl
+
 end InfiniteList
 

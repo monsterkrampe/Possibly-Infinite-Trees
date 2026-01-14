@@ -459,6 +459,89 @@ namespace PossiblyInfiniteTree
             rw [c_mem.left]
             exact ns_max
 
+  def generate_branch (start : Option β) (generator : β -> Option β) (mapper : β -> PossiblyInfiniteTreeWithRoot α) : PossiblyInfiniteList α :=
+    (PossiblyInfiniteList.generate start generator mapper).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property))
+
+  theorem generate_branch_mem_branches {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α}
+      (next_is_child : ∀ b, ∀ b' ∈ generator b, mapper b' ∈ (mapper b).val.childTrees)
+      (maximal : ∀ b, generator b = none -> (mapper b).val.childTrees = PossiblyInfiniteList.empty)
+      (isSome_start : start.isSome) :
+      generate_branch start generator mapper ∈ (mapper (start.get isSome_start)).val.branches := by
+    let addresses : InfiniteList Nat := InfiniteList.generate start (fun o => o.bind generator)
+      (fun o => (o.bind (fun b => (generator b).attach.map (fun b' => Classical.choose (next_is_child b b'.val b'.property)))).getD 0)
+    let trees := PossiblyInfiniteList.generate start generator mapper
+    have : ∀ n, PossiblyInfiniteTreeWithRoot.opt_to_tree (trees.get? n) = (trees.head.get (by simp only [trees, PossiblyInfiniteList.head_generate, Option.isSome_map]; exact isSome_start)).val.drop (addresses.take n) := by
+      intro n
+      induction n with
+      | zero =>
+        simp only [InfiniteList.take_zero, drop_nil, PossiblyInfiniteList.head_eq, PossiblyInfiniteTreeWithRoot.opt_to_tree]
+        split
+        case h_1 _ eq => simp only [trees, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_eq_none_iff] at eq; rw [eq] at isSome_start; simp at isSome_start
+        case h_2 _ _ eq => simp [eq]
+      | succ n ih =>
+        rw [InfiniteList.take_succ', ← drop_drop, ← ih]
+        cases eq : trees.get? n with
+        | none =>
+          conv => right; simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]
+          rw [drop_empty, empty_iff_root_none, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
+          apply trees.no_holes'; exact eq
+        | some t =>
+          cases eq2 : trees.get? (n + 1) with
+          | none =>
+            simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]
+            simp only [trees, PossiblyInfiniteList.get?_generate, Option.map_eq_some_iff] at eq
+            simp only [trees, PossiblyInfiniteList.get?_succ_generate, Option.map_eq_none_iff, Option.bind_eq_none_iff] at eq2
+            rcases eq with ⟨b, b_mem, eq⟩
+            specialize maximal b (eq2 b b_mem)
+            rw [eq] at maximal
+            have : PossiblyInfiniteTreeWithRoot.opt_to_tree (t.val.childTrees.get? (addresses.get n)) = empty := by
+              rw [maximal, PossiblyInfiniteList.get?_empty]; rfl
+            rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt] at this
+            rw [this]
+          | some t2 =>
+            simp only [trees, PossiblyInfiniteList.get?_generate, Option.map_eq_some_iff] at eq
+            simp only [trees, PossiblyInfiniteList.get?_succ_generate] at eq2
+            rcases eq with ⟨b, b_mem, eq⟩
+            rw [b_mem, Option.bind_some, Option.map_eq_some_iff] at eq2
+            rcases eq2 with ⟨b', b'_mem, t2_eq⟩
+            have eq_child := Classical.choose_spec (next_is_child b b' b'_mem)
+            rw [← t2_eq, ← eq_child]
+            conv => left; right; left; rw [eq]
+            rw [← PossiblyInfiniteList.get?.eq_def, get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]
+            simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]
+            have : addresses.get n = Classical.choose (next_is_child b b' b'_mem) := by
+              simp only [addresses, InfiniteList.get_generate]
+              rw [b_mem, Option.bind_some]
+              have : (generator b).attach = some ⟨b', b'_mem⟩ := by simp [b'_mem]
+              conv => left; left; right; rw [this]
+              rw [Option.map_some, Option.getD_some]
+            rw [this]
+    exists addresses; constructor
+    . apply PossiblyInfiniteList.ext
+      intro n
+      simp only [generate_branch]
+      rw [PossiblyInfiniteList.get?_map, get?_branchForAddress]
+      simp only [trees, PossiblyInfiniteList.head_generate, Option.get_map] at this
+      rw [← root_drop, ← this]
+      cases (PossiblyInfiniteList.generate start generator mapper).get? n <;> simp [PossiblyInfiniteTreeWithRoot.opt_to_tree, root_empty]
+    . intro n
+      rw [get?_branchForAddress]
+      simp only [trees, PossiblyInfiniteList.head_generate, Option.get_map] at this
+      rw [← root_drop, ← this, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
+      rw [← this]
+      rw [PossiblyInfiniteList.get?_succ_generate, PossiblyInfiniteList.get?_generate, Option.map_eq_none_iff]
+      rw [PossiblyInfiniteList.head_eq, get?_childNodes, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteList.head_eq, ← PossiblyInfiniteList.empty_iff_head_none]
+      rw [Option.bind_eq_none_iff]
+      intro eq_none
+      cases b_eq : (InfiniteList.iterate start fun x => x.bind generator).get n with
+      | none => simp [PossiblyInfiniteTreeWithRoot.opt_to_tree, childTrees_empty]
+      | some b => simp only [Option.map_some, PossiblyInfiniteTreeWithRoot.opt_to_tree]; apply maximal; apply eq_none; exact b_eq
+
+  theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} : (generate_branch start generator mapper).head = start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) := by simp only [generate_branch]; rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_map, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_map]; rfl
+
+  theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
+    ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intros; rfl
+
   def leaves (t : PossiblyInfiniteTree α) : Set α := fun a => ∃ node : List Nat, t.get? node = some a ∧ (t.drop node).childNodes.head = none
 
   def from_branch (b : PossiblyInfiniteList α) : PossiblyInfiniteTree α where

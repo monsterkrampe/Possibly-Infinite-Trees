@@ -376,6 +376,34 @@ namespace FiniteDegreeTree
           . exact c_mem.right
         . exact tail_mem
 
+  def generate_branch (start : Option β) (generator : β -> Option β) (mapper : β -> FiniteDegreeTreeWithRoot α) : PossiblyInfiniteList α :=
+    PossiblyInfiniteTree.generate_branch start generator (fun b => (mapper b).to_possibly_infinite)
+
+  theorem generate_branch_mem_branches {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α}
+      (next_is_child : ∀ b, ∀ b' ∈ generator b, mapper b' ∈ (mapper b).val.childTrees)
+      (maximal : ∀ b, generator b = none -> (mapper b).val.childTrees = [])
+      (isSome_start : start.isSome) :
+      generate_branch start generator mapper ∈ (mapper (start.get isSome_start)).val.branches := by
+    apply PossiblyInfiniteTree.generate_branch_mem_branches
+    . intro b b' b'_mem
+      specialize next_is_child b b' b'_mem
+      simp only [childTrees, List.mem_map, List.mem_attach, true_and] at next_is_child
+      rcases next_is_child with ⟨t, next_is_child⟩
+      rw [← next_is_child, FiniteDegreeTreeWithRoot.to_possibly_infinite_after_from_possibly_infinite]
+      simp only [FiniteDegreeTreeWithRoot.to_possibly_infinite]
+      rw [← PossiblyInfiniteList.mem_toList_of_finite]
+      exact t.property
+    . intro b eq_none
+      specialize maximal b eq_none
+      simp only [childTrees, List.map_eq_nil_iff, List.attach_eq_nil_iff, PossiblyInfiniteList.toList_of_finite_empty_iff] at maximal
+      simp only [FiniteDegreeTreeWithRoot.to_possibly_infinite]
+      exact maximal
+
+  theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} : (generate_branch start generator mapper).head = start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) := PossiblyInfiniteTree.head_generate_branch
+
+  theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
+    ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, PossiblyInfiniteList.get?_generate, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
+
   def leaves (t : FiniteDegreeTree α) : Set α := t.tree.leaves
 
   def from_branch (b : PossiblyInfiniteList α) : FiniteDegreeTree α where

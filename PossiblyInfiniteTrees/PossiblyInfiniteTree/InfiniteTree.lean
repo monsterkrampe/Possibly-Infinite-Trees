@@ -142,5 +142,38 @@ namespace InfiniteTreeSkeleton
       rw [InfiniteList.cons_head_tail b]
       rw [head_eq, tail_eq]
 
+  def generate_branch (start : β) (generator : β -> β) (mapper : β -> InfiniteTreeSkeleton α) : InfiniteList α :=
+    (InfiniteList.generate start generator mapper).map root
+
+  theorem generate_branch_mem_branches {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α}
+      (next_is_child : ∀ b, mapper (generator b) ∈ (mapper b).childTrees) :
+      generate_branch start generator mapper ∈ (mapper start).branches := by
+    let addresses : InfiniteList Nat := InfiniteList.generate start generator (fun b => Classical.choose (next_is_child b))
+    let trees := InfiniteList.generate start generator mapper
+    have : ∀ n, trees.get n = trees.head.drop (addresses.take n) := by
+      intro n
+      induction n with
+      | zero => simp [InfiniteList.take_zero, drop_nil, InfiniteList.head]
+      | succ n ih =>
+        rw [InfiniteList.take_succ', ← drop_drop, ← ih]
+        simp only [trees, InfiniteList.get_succ_generate]
+        have eq_child := Classical.choose_spec (next_is_child ((InfiniteList.iterate start generator).get n))
+        rw [← eq_child]
+        rw [get_childTrees]
+        rfl
+    exists addresses
+    apply InfiniteList.ext
+    intro n
+    simp only [generate_branch]
+    rw [InfiniteList.get_map, get_branchForAddress]
+    rw [this, root_drop]
+    simp only [trees]
+    rw [InfiniteList.head_generate]
+
+  theorem head_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).head = (mapper start).root := rfl
+
+  theorem get_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
+    ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by intros; rfl
+
 end InfiniteTreeSkeleton
 

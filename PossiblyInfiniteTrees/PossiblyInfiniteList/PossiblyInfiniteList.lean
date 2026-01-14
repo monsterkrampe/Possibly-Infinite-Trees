@@ -258,5 +258,22 @@ namespace PossiblyInfiniteList
   theorem toList_of_finite_after_from_list {l : List α} : (from_list l).toList_of_finite finite_from_list = l := by
     apply List.ext_getElem?; intro i; rw [getElem?_toList_of_finite, get?_from_list]
 
+  def generate (start : Option α) (generator : α -> Option α) (mapper : α -> β) : PossiblyInfiniteList β := {
+    infinite_list := InfiniteList.generate start (·.bind generator) (·.map mapper)
+    no_holes := by
+      intro n
+      rw [InfiniteList.get_generate, InfiniteList.get_succ_generate, Option.map_eq_none_iff, Option.map_eq_none_iff]
+      intro eq
+      rw [eq, Option.bind_none]
+  }
+
+  theorem head_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} : (generate start generator mapper).head = start.map mapper := rfl
+
+  theorem get?_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get? n = ((InfiniteList.iterate start (·.bind generator)).get n).map mapper := by intros; rfl
+
+  theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get? n.succ = (((InfiniteList.iterate start (·.bind generator)).get n).bind generator).map mapper := by intros; rfl
+
 end PossiblyInfiniteList
 
