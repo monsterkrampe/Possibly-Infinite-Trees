@@ -121,6 +121,12 @@ namespace InfiniteList
 
   theorem get_map {l : InfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get n = f (l.get n) := by rfl
 
+  theorem mem_map {l : InfiniteList α} {f : α -> β} : ∀ e, e ∈ (l.map f) ↔ ∃ e' ∈ l, f e' = e := by
+    intro e
+    constructor
+    . rintro ⟨i, e_mem⟩; rw [get_map] at e_mem; exists l.get i; exact ⟨get_mem, e_mem⟩
+    . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [get_map]; rw [e'_mem]
+
   def take (l : InfiniteList α) : Nat -> List α
   | .zero => []
   | .succ n => l.head :: (l.tail.take n)

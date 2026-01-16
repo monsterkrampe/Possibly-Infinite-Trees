@@ -165,6 +165,12 @@ namespace PossiblyInfiniteList
 
   theorem get?_map {l : PossiblyInfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get? n = (l.get? n).map f := by rfl
 
+  theorem mem_map {l : PossiblyInfiniteList α} {f : α -> β} : ∀ e, e ∈ (l.map f) ↔ ∃ e' ∈ l, f e' = e := by
+    intro e
+    constructor
+    . rintro ⟨i, e_mem⟩; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff] at e_mem; rcases e_mem with ⟨e', e'_mem, e_eq⟩; exists e'; constructor; exists i; exact e_eq
+    . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff]; exists e'
+
   def finite (l : PossiblyInfiniteList α) : Prop := ∃ k, l.get? k = none
 
   theorem finite_empty {α} : (@PossiblyInfiniteList.empty α).finite := by exists 0
