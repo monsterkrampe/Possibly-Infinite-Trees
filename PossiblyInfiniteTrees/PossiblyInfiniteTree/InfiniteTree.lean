@@ -175,5 +175,7 @@ namespace InfiniteTreeSkeleton
   theorem get_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
     ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by intros; rfl
 
+  theorem tail_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).tail = generate_branch (generator start) generator mapper := by unfold generate_branch; rw [InfiniteList.tail_map, InfiniteList.tail_generate]
+
 end InfiniteTreeSkeleton
 

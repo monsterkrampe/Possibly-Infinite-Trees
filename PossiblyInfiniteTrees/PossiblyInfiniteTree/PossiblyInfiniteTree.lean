@@ -542,6 +542,8 @@ namespace PossiblyInfiniteTree
   theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intros; rfl
 
+  theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} : (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := by unfold generate_branch; rw [PossiblyInfiniteList.tail_map, PossiblyInfiniteList.tail_generate]
+
   def leaves (t : PossiblyInfiniteTree α) : Set α := fun a => ∃ node : List Nat, t.get? node = some a ∧ (t.drop node).childNodes.head = none
 
   def from_branch (b : PossiblyInfiniteList α) : PossiblyInfiniteTree α where

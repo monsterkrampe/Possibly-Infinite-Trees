@@ -127,6 +127,8 @@ namespace InfiniteList
     . rintro ⟨i, e_mem⟩; rw [get_map] at e_mem; exists l.get i; exact ⟨get_mem, e_mem⟩
     . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [get_map]; rw [e'_mem]
 
+  theorem tail_map {l : InfiniteList α} {f : α -> β} : (l.map f).tail = l.tail.map f := by rfl
+
   def take (l : InfiniteList α) : Nat -> List α
   | .zero => []
   | .succ n => l.head :: (l.tail.take n)
@@ -156,6 +158,11 @@ namespace InfiniteList
   | .zero => start
   | .succ n => generator (iterate start generator n)
 
+  theorem get_succ_iterate {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
+    intro n; induction n with
+    | zero => simp [get, iterate]
+    | succ n ih => simp only [get, iterate] at *; rw [ih]
+
   -- This is essentially the same as Stream'.corec from Mathlib
   def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
 
@@ -166,6 +173,16 @@ namespace InfiniteList
 
   theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get n.succ = mapper (generator ((iterate start generator).get n)) := by intros; rfl
+
+  theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
+      ∀ n, (generate start generator mapper).get n.succ = (generate (generator start) generator mapper).get n := by
+    intro n; simp only [generate, get_map, get_succ_iterate]
+
+  theorem tail_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).tail = generate (generator start) generator mapper := by
+    apply ext
+    intro n
+    rw [get_tail]
+    rw [get_succ_generate']
 
 end InfiniteList
 

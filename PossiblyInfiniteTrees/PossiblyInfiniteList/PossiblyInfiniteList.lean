@@ -171,6 +171,8 @@ namespace PossiblyInfiniteList
     . rintro ⟨i, e_mem⟩; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff] at e_mem; rcases e_mem with ⟨e', e'_mem, e_eq⟩; exists e'; constructor; exists i; exact e_eq
     . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff]; exists e'
 
+  theorem tail_map {l : PossiblyInfiniteList α} {f : α -> β} : (l.map f).tail = l.tail.map f := by rfl
+
   def finite (l : PossiblyInfiniteList α) : Prop := ∃ k, l.get? k = none
 
   theorem finite_empty {α} : (@PossiblyInfiniteList.empty α).finite := by exists 0
@@ -280,6 +282,10 @@ namespace PossiblyInfiniteList
 
   theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get? n.succ = (((InfiniteList.iterate start (·.bind generator)).get n).bind generator).map mapper := by intros; rfl
+
+  theorem tail_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} : (generate start generator mapper).tail = generate (start.bind generator) generator mapper := by
+    simp only [generate, tail, mk.injEq]
+    rw [InfiniteList.tail_generate]
 
 end PossiblyInfiniteList
 

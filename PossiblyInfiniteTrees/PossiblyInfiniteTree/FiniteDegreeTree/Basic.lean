@@ -404,6 +404,8 @@ namespace FiniteDegreeTree
   theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, PossiblyInfiniteList.get?_generate, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
 
+  theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} : (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := PossiblyInfiniteTree.tail_generate_branch
+
   def leaves (t : FiniteDegreeTree α) : Set α := t.tree.leaves
 
   def from_branch (b : PossiblyInfiniteList α) : FiniteDegreeTree α where
