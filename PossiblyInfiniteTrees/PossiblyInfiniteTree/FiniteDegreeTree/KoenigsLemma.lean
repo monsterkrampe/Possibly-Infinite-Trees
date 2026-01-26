@@ -113,38 +113,19 @@ namespace FiniteDegreeTree
             . rw [List.mem_flatMap]; exists ⟨c, c_mem⟩; rw [spec.right]; simp [tail_mem]
             . rw [PossiblyInfiniteList.cons_head_tail b r (by rw [head_eq, root_eq]), PossiblyInfiniteList.tail_cons]
 
-  noncomputable def infinite_branching_child_index_of_branches_infinite (t : FiniteDegreeTree α) (not_finite : ¬ t.branches.finite) : { n : Nat // ∃ (lt : n < t.childTrees.length), ¬ t.childTrees[n].val.branches.finite } :=
-    have : ¬ (∀ c ∈ t.childTrees, c.val.branches.finite) := by
+  noncomputable def infinite_branch_generator (inf_branch_tree : { t : FiniteDegreeTreeWithRoot α // ¬ t.val.branches.finite }) : { t : FiniteDegreeTreeWithRoot α // t ∈ inf_branch_tree.val.val.childTrees ∧ ¬ t.val.branches.finite } :=
+    have : ¬ (∀ c ∈ inf_branch_tree.val.val.childTrees, c.val.branches.finite) := by
       intro contra
-      apply not_finite
+      apply inf_branch_tree.property
       apply branches_finite_of_each_child_branches_finite
       exact contra
-    have : ∃ (i : Nat) (lt : i < t.childTrees.length), ¬ t.childTrees[i].val.branches.finite := by
+    have : ∃ c ∈ inf_branch_tree.val.val.childTrees, ¬ c.val.branches.finite := by
       simp at this
       rcases this with ⟨c, ⟨_, c_mem⟩, fin⟩
-      rw [List.mem_iff_getElem] at c_mem
-      rcases c_mem with ⟨i, lt, c_mem⟩
-      exists i, lt
-      rw [c_mem]
-      exact fin
-    let i := Classical.choose this
-    let i_spec := Classical.choose_spec this
-    ⟨i, i_spec⟩
-
-  noncomputable def infinite_branching_node_at_depth_of_branches_infinite (t : FiniteDegreeTree α) (not_finite : ¬ t.branches.finite) : (depth : Nat) -> { ns : List Nat // ns.length = depth ∧ ¬ (t.drop ns).branches.finite }
-  | .zero => ⟨[], by constructor; simp; exact not_finite⟩
-  | .succ depth =>
-    let prev_result := t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth
-    let step_result := (t.drop prev_result.val).infinite_branching_child_index_of_branches_infinite prev_result.property.right
-    ⟨prev_result.val ++ [step_result.val], by
-      constructor
-      . rw [List.length_append, prev_result.property.left]; simp
-      . rcases step_result.property with ⟨lt, step_prop⟩
-        rw [get_childTrees, drop_drop] at step_prop
-        exact step_prop⟩
-
-  theorem infinite_branching_node_at_depth_extends_previous {t : FiniteDegreeTree α} {not_finite : ¬ t.branches.finite} {depth : Nat} : (t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth.succ).val = (t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth).val ++ [(t.infinite_branching_node_at_depth_of_branches_infinite not_finite depth.succ).val.getLast (by simp [infinite_branching_node_at_depth_of_branches_infinite])] := by
-    simp [infinite_branching_node_at_depth_of_branches_infinite]
+      exact ⟨_, ⟨c_mem, fin⟩⟩
+    let c := Classical.choose this
+    let c_spec := Classical.choose_spec this
+    ⟨c, c_spec⟩
 
   -- König's Lemma
   theorem branches_finite_of_each_branch_finite (t : FiniteDegreeTree α) : (∀ b ∈ t.branches, b.finite) -> t.branches.finite := by
@@ -152,46 +133,33 @@ namespace FiniteDegreeTree
     apply Classical.byContradiction
     intro contra
 
-    have : ∃ (ns : InfiniteList Nat), ∀ (n : Nat), ¬ (t.drop (ns.take n)).branches.finite := by
-      let ns : InfiniteList Nat := fun n =>
-        (t.infinite_branching_node_at_depth_of_branches_infinite contra n.succ).val.getLast
-          (by simp [infinite_branching_node_at_depth_of_branches_infinite])
-      have : ∀ n, ns.take n = (t.infinite_branching_node_at_depth_of_branches_infinite contra n).val := by
-        intro n
-        induction n with
-        | zero => simp [InfiniteList.take, infinite_branching_node_at_depth_of_branches_infinite]
-        | succ i ih =>
-          rw [InfiniteList.take_succ']
-          rw [ih]
-          rw [infinite_branching_node_at_depth_extends_previous]
-          rfl
-      exists ns
-      intro n
-      rw [this]
-      exact (t.infinite_branching_node_at_depth_of_branches_infinite contra n).property.right
+    let start : { t : FiniteDegreeTreeWithRoot α // ¬ t.val.branches.finite } := ⟨⟨t, by intro root_none; apply contra; apply branches_finite_of_root_none; exact root_none⟩, contra⟩
+    let branch : PossiblyInfiniteList α := FiniteDegreeTree.generate_branch (some start) (fun t =>
+      let next := infinite_branch_generator t
+      some ⟨next.val, next.property.right⟩
+    ) (fun t => t.val)
+    have branch_mem : branch ∈ t.branches := by
+      apply generate_branch_mem_branches
+      . intro t c mem
+        simp only [Option.mem_def, Option.some_inj] at mem
+        rw [← mem]
+        exact (infinite_branch_generator t).property.left
+      . simp
+      . simp
 
-    rcases this with ⟨ns, all_infinite⟩
+    rcases all_finite branch branch_mem with ⟨n, eq_none⟩
 
-    let branch := t.tree.branchForAddress ns
-
-    specialize all_finite branch (by
-      exists ns
-      constructor
-      . rfl
-      . intro n contra
-        rw [PossiblyInfiniteTree.get?_branchForAddress] at contra
-        apply False.elim
-        apply all_infinite n.succ
-        apply branches_finite_of_root_none
-        rw [root_drop]
-        exact contra
-    )
-
-    rcases all_finite with ⟨n, eq_none⟩
-    apply all_infinite n
-    apply branches_finite_of_root_none
-    rw [root_drop]
-    exact eq_none
+    induction n with
+    | zero =>
+      simp only [← PossiblyInfiniteList.head_eq, branch, head_generate_branch, Option.map_some, Option.some_get] at eq_none
+      apply contra; apply branches_finite_of_root_none; exact eq_none
+    | succ n ih =>
+      simp only [branch, get?_generate_branch, Option.map_eq_none_iff, PossiblyInfiniteList.get?_succ_generate, Option.bind_eq_none_iff] at eq_none
+      simp only [branch, get?_generate_branch, Option.map_eq_none_iff, PossiblyInfiniteList.get?_generate] at ih
+      rw [imp_false, ← ne_eq, Option.ne_none_iff_exists] at ih
+      rcases ih with ⟨x, x_eq⟩
+      specialize eq_none x (Eq.symm x_eq)
+      simp at eq_none
 
 end FiniteDegreeTree
 

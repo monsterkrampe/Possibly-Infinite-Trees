@@ -11,9 +11,24 @@ namespace InfiniteList
   instance : Membership α (InfiniteList α) where
     mem l a := ∃ n, l.get n = a
 
+  theorem get_mem {l : InfiniteList α} {n : Nat} : l.get n ∈ l := by exists n
+
+  def Element (l : InfiniteList α) := { e : α // e ∈ l }
+
   def drop (l : InfiniteList α) (n : Nat) : InfiniteList α := fun i => l.get (n + i)
 
+  -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
+  def IsSuffix (l1 l2 : InfiniteList α) : Prop := ∃ n, l2.drop n = l1
+  infixl:50 " <:+ " => IsSuffix
+
   theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n + i) := by rfl
+
+  theorem mem_of_mem_suffix {l1 l2 : InfiniteList α} (suffix : l1 <:+ l2) : ∀ e ∈ l1, e ∈ l2 := by
+    rintro e ⟨n, e_eq⟩
+    rcases suffix with ⟨m, suffix⟩
+    exists m + n
+    rw [← suffix, get_drop] at e_eq
+    exact e_eq
 
   theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by
     apply funext
@@ -24,6 +39,36 @@ namespace InfiniteList
     . exact ext
 
   theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by apply ext; intro n; rw [get_drop, Nat.zero_add]
+
+  theorem IsSuffix_refl {l : InfiniteList α} : l <:+ l := by exists 0; exact l.drop_zero
+
+  theorem IsSuffix_drop {l : InfiniteList α} : ∀ n, l.drop n <:+ l := by intro n; exists n
+
+  theorem IsSuffix_trans {l1 l2 l3 : InfiniteList α} : l1 <:+ l2 -> l2 <:+ l3 -> l1 <:+ l3 := by
+    rintro ⟨n1, h1⟩ ⟨n2, h2⟩
+    exists (n2 + n1)
+    rw [← h1, ← h2]
+    apply ext
+    intro n
+    simp only [get_drop, ← Nat.add_assoc]
+
+  -- same statement as List.suffix_or_suffix_of_suffix
+  theorem suffix_or_suffix_of_suffix {l1 l2 l3 : InfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := by
+    rintro ⟨n, eq⟩ ⟨n2, eq2⟩
+    cases Decidable.em (n2 ≤ n) with
+    | inl le =>
+      apply Or.inl
+      exists (n - n2)
+      apply ext
+      intro n3
+      rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
+    | inr le =>
+      have le := Nat.le_of_not_le le
+      apply Or.inr
+      exists (n2 - n)
+      apply ext
+      intro n3
+      rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
 
   def cons (hd : α) (tl : InfiniteList α) : InfiniteList α
   | .zero => hd
@@ -37,6 +82,7 @@ namespace InfiniteList
 
   theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := rfl
 
+  theorem head_mem {l : InfiniteList α} : l.head ∈ l := l.get_mem (n := 0)
   theorem head_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).head = hd := by rfl
   theorem tail_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).tail = tl := by rfl
 
@@ -48,9 +94,40 @@ namespace InfiniteList
   theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
     intros; unfold tail; apply ext; intro n; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
 
+  theorem IsSuffix_tail {l : InfiniteList α} : l.tail <:+ l := by exists 1; apply ext; intro n; rw [get_drop, get_tail, Nat.add_comm]
+
+  -- a recursor for proving properties about list members via induction
+  theorem mem_rec
+      {l : InfiniteList α}
+      {motive : Element l -> Prop}
+      (head : motive ⟨l.head, l.head_mem⟩)
+      (step : ∀ l2, (suffix : l2 <:+ l) -> motive ⟨l2.head, l2.mem_of_mem_suffix suffix _ l2.head_mem⟩ -> motive ⟨l2.tail.head, l2.tail.mem_of_mem_suffix (IsSuffix_trans l2.IsSuffix_tail suffix) _ l2.tail.head_mem⟩)
+      (a : Element l) :
+      motive a := by
+    rcases a.property with ⟨n, a_mem⟩
+    have a_mem : a = ⟨l.get n, l.get_mem⟩ := by simp only [a_mem]; rfl
+    induction n generalizing a with
+    | zero => rw [a_mem]; exact head
+    | succ n ih =>
+      specialize step (l.drop n) (l.IsSuffix_drop n)
+      simp only [head_drop, tail_drop] at step
+      rw [a_mem]
+      apply step
+      apply ih
+      . rfl
+      . rfl
+
   def map (l : InfiniteList α) (f : α -> β) : InfiniteList β := fun n => f (l.get n)
 
   theorem get_map {l : InfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get n = f (l.get n) := by rfl
+
+  theorem mem_map {l : InfiniteList α} {f : α -> β} : ∀ e, e ∈ (l.map f) ↔ ∃ e' ∈ l, f e' = e := by
+    intro e
+    constructor
+    . rintro ⟨i, e_mem⟩; rw [get_map] at e_mem; exists l.get i; exact ⟨get_mem, e_mem⟩
+    . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [get_map]; rw [e'_mem]
+
+  theorem tail_map {l : InfiniteList α} {f : α -> β} : (l.map f).tail = l.tail.map f := by rfl
 
   def take (l : InfiniteList α) : Nat -> List α
   | .zero => []
@@ -75,6 +152,37 @@ namespace InfiniteList
     induction m with
     | zero => simp [take_zero]
     | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
+
+  -- This is essentially Stream'.iterate from Mathlib
+  def iterate (start : α) (generator : α -> α) : InfiniteList α
+  | .zero => start
+  | .succ n => generator (iterate start generator n)
+
+  theorem get_succ_iterate {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
+    intro n; induction n with
+    | zero => simp [get, iterate]
+    | succ n ih => simp only [get, iterate] at *; rw [ih]
+
+  -- This is essentially the same as Stream'.corec from Mathlib
+  def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
+
+  theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).head = mapper start := rfl
+
+  theorem get_generate {start : α} {generator : α -> α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get n = mapper ((iterate start generator).get n) := by intros; rfl
+
+  theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get n.succ = mapper (generator ((iterate start generator).get n)) := by intros; rfl
+
+  theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
+      ∀ n, (generate start generator mapper).get n.succ = (generate (generator start) generator mapper).get n := by
+    intro n; simp only [generate, get_map, get_succ_iterate]
+
+  theorem tail_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).tail = generate (generator start) generator mapper := by
+    apply ext
+    intro n
+    rw [get_tail]
+    rw [get_succ_generate']
 
 end InfiniteList
 

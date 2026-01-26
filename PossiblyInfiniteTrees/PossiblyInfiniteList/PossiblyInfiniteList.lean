@@ -27,6 +27,8 @@ namespace PossiblyInfiniteList
 
   theorem mem_iff {l : PossiblyInfiniteList α} : ∀ {e}, e ∈ l ↔ ∃ n, l.get? n = some e := by rfl
 
+  def Element (l : PossiblyInfiniteList α) := { e : α // e ∈ l }
+
   theorem get?_eq_none_of_le_of_eq_none {l : PossiblyInfiniteList α} {n : Nat} :
       l.get? n = none -> ∀ m, n ≤ m -> l.get? m = none := by
     intro h
@@ -44,7 +46,19 @@ namespace PossiblyInfiniteList
     infinite_list := l.infinite_list.drop n
     no_holes := by intro n'; rw [InfiniteList.get_drop, InfiniteList.get_drop, Nat.add_succ]; exact l.no_holes (n + n')
 
+  -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
+  def IsSuffix (l1 l2 : PossiblyInfiniteList α) : Prop := l1.infinite_list <:+ l2.infinite_list
+  infixl:50 " <:+ " => IsSuffix
+
+  theorem IsSuffix_iff {l1 l2 : PossiblyInfiniteList α} : l1 <:+ l2 ↔ ∃ n, l2.drop n = l1 := by
+    constructor
+    . rintro ⟨n, h⟩; exists n; simp [drop, h]
+    . rintro ⟨n, h⟩; exists n; simp only [drop] at h; rw [← h]
+
   theorem get?_drop {l : PossiblyInfiniteList α} {n i : Nat} : (l.drop n).get? i = l.get? (n + i) := by rfl
+
+  theorem mem_of_mem_suffix {l1 l2 : PossiblyInfiniteList α} (suffix : l1 <:+ l2) : ∀ e ∈ l1, e ∈ l2 := by
+    intro e mem; apply InfiniteList.mem_of_mem_suffix suffix; exact mem
 
   theorem ext {l1 l2 : PossiblyInfiniteList α} : (∀ n, l1.get? n = l2.get? n) -> l1 = l2 := by
     intro h; rw [PossiblyInfiniteList.mk.injEq]; apply InfiniteList.ext; exact h
@@ -56,6 +70,15 @@ namespace PossiblyInfiniteList
 
   theorem drop_zero {l : PossiblyInfiniteList α} : l.drop 0 = l := by
     rw [PossiblyInfiniteList.mk.injEq]; exact InfiniteList.drop_zero
+
+  theorem IsSuffix_refl {l : PossiblyInfiniteList α} : l <:+ l := l.infinite_list.IsSuffix_refl
+
+  theorem IsSuffix_drop {l : PossiblyInfiniteList α} : ∀ n, l.drop n <:+ l := l.infinite_list.IsSuffix_drop
+
+  theorem IsSuffix_trans {l1 l2 l3 : PossiblyInfiniteList α} : l1 <:+ l2 -> l2 <:+ l3 -> l1 <:+ l3 := InfiniteList.IsSuffix_trans
+
+  -- same statement as List.suffix_or_suffix_of_suffix
+  theorem suffix_or_suffix_of_suffix {l1 l2 l3 : PossiblyInfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := InfiniteList.suffix_or_suffix_of_suffix
 
   def cons (hd : α) (tl : PossiblyInfiniteList α) : PossiblyInfiniteList α where
     infinite_list := InfiniteList.cons (.some hd) tl.infinite_list
@@ -72,6 +95,8 @@ namespace PossiblyInfiniteList
   theorem get?_cons_succ {hd : α} {tl : PossiblyInfiniteList α} : ∀ n, (cons hd tl).get? n.succ = tl.get? n := by intro n; unfold get?; unfold cons; rw [InfiniteList.get_cons_succ]
 
   def head (l : PossiblyInfiniteList α) : Option α := l.infinite_list.head
+  theorem head_mem {l : PossiblyInfiniteList α} : ∀ h ∈ l.head, h ∈ l := by intro h h_mem; rw [Option.mem_def] at h_mem; simp only [Membership.mem, ← h_mem]; exact l.infinite_list.head_mem
+
   def tail (l : PossiblyInfiniteList α) : PossiblyInfiniteList α where
     infinite_list := l.infinite_list.tail
     no_holes := by intro n; rw [InfiniteList.get_tail, InfiniteList.get_tail]; exact l.no_holes n.succ
@@ -103,11 +128,50 @@ namespace PossiblyInfiniteList
       apply l.no_holes
       exact ih
 
+  theorem IsSuffix_tail {l : PossiblyInfiniteList α} : l.tail <:+ l := l.infinite_list.IsSuffix_tail
+
+  -- a recursor for proving properties about list members via induction
+  theorem mem_rec
+      {l : PossiblyInfiniteList α}
+      {motive : Element l -> Prop}
+      (head : ∀ head, (mem : head ∈ l.head) -> motive ⟨head, head_mem _ mem⟩)
+      (step : ∀ l2, (suffix : l2 <:+ l) -> (∃ (head : α) (mem : head ∈ l2.head), motive ⟨head, l2.mem_of_mem_suffix suffix _ (l2.head_mem _ mem)⟩) -> ∀ tail_head, (mem_th : tail_head ∈ l2.tail.head) -> motive ⟨tail_head, l2.tail.mem_of_mem_suffix (IsSuffix_trans l2.IsSuffix_tail suffix) _ (l2.tail.head_mem _ mem_th)⟩)
+      (a : Element l) :
+      motive a := by
+    let motive' (o : l.infinite_list.Element) : Prop := ∀ v, (mem : v ∈ o.val) -> motive ⟨v, by have := o.property; rw [Option.mem_def] at mem; rw [mem] at this; exact this⟩
+    let a' : l.infinite_list.Element := ⟨some a.val, a.property⟩
+    have : motive' a' := by
+      induction a' using InfiniteList.mem_rec with
+      | head => exact head
+      | step l2 suffix ih =>
+        rcases suffix with ⟨n, suffix⟩
+        simp only [← suffix]
+        cases eq : (l.infinite_list.drop n).head with
+        | none => simp only [InfiniteList.head_drop, InfiniteList.tail_drop, motive']; intro _ mem; rw [Option.mem_def, l.no_holes] at mem; simp at mem; exact eq
+        | some b =>
+          specialize step (l.drop n) (l.IsSuffix_drop n)
+          apply step
+          exists b, eq
+          unfold motive' at ih
+          apply ih
+          simp only [← suffix]
+          exact eq
+    apply this
+    rfl
+
   def map (l : PossiblyInfiniteList α) (f : α -> β) : PossiblyInfiniteList β where
     infinite_list := l.infinite_list.map (fun o => o.map f)
     no_holes := by intro n; simp only [InfiniteList.get_map, Option.map_eq_none_iff]; apply l.no_holes
 
   theorem get?_map {l : PossiblyInfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get? n = (l.get? n).map f := by rfl
+
+  theorem mem_map {l : PossiblyInfiniteList α} {f : α -> β} : ∀ e, e ∈ (l.map f) ↔ ∃ e' ∈ l, f e' = e := by
+    intro e
+    constructor
+    . rintro ⟨i, e_mem⟩; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff] at e_mem; rcases e_mem with ⟨e', e'_mem, e_eq⟩; exists e'; constructor; exists i; exact e_eq
+    . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [← PossiblyInfiniteList.get?.eq_def, get?_map, Option.map_eq_some_iff]; exists e'
+
+  theorem tail_map {l : PossiblyInfiniteList α} {f : α -> β} : (l.map f).tail = l.tail.map f := by rfl
 
   def finite (l : PossiblyInfiniteList α) : Prop := ∃ k, l.get? k = none
 
@@ -201,6 +265,27 @@ namespace PossiblyInfiniteList
 
   theorem toList_of_finite_after_from_list {l : List α} : (from_list l).toList_of_finite finite_from_list = l := by
     apply List.ext_getElem?; intro i; rw [getElem?_toList_of_finite, get?_from_list]
+
+  def generate (start : Option α) (generator : α -> Option α) (mapper : α -> β) : PossiblyInfiniteList β := {
+    infinite_list := InfiniteList.generate start (·.bind generator) (·.map mapper)
+    no_holes := by
+      intro n
+      rw [InfiniteList.get_generate, InfiniteList.get_succ_generate, Option.map_eq_none_iff, Option.map_eq_none_iff]
+      intro eq
+      rw [eq, Option.bind_none]
+  }
+
+  theorem head_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} : (generate start generator mapper).head = start.map mapper := rfl
+
+  theorem get?_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get? n = ((InfiniteList.iterate start (·.bind generator)).get n).map mapper := by intros; rfl
+
+  theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get? n.succ = (((InfiniteList.iterate start (·.bind generator)).get n).bind generator).map mapper := by intros; rfl
+
+  theorem tail_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} : (generate start generator mapper).tail = generate (start.bind generator) generator mapper := by
+    simp only [generate, tail, mk.injEq]
+    rw [InfiniteList.tail_generate]
 
 end PossiblyInfiniteList
 
