@@ -1,4 +1,3 @@
-import BasicLeanDatastructures.Fin
 import BasicLeanDatastructures.Set.Finite
 
 import PossiblyInfiniteTrees.PossiblyInfiniteTree.PossiblyInfiniteTree
