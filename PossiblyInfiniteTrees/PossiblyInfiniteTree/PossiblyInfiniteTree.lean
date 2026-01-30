@@ -20,15 +20,14 @@ theorem InfiniteTreeSkeleton.no_orphans_closure {t : InfiniteTreeSkeleton (Optio
 structure PossiblyInfiniteTree (α : Type u) where
   infinite_tree : InfiniteTreeSkeleton (Option α)
   no_orphans : infinite_tree.no_orphans
-  no_holes_in_children :
-    ∀ ns : List Nat, (infinite_tree.drop ns).childNodes.no_holes
+  no_holes_in_children : ∀ subtree, subtree <:+ infinite_tree -> subtree.childNodes.no_holes
 
 namespace PossiblyInfiniteTree
 
   def empty : PossiblyInfiniteTree α where
     infinite_tree := fun _ => none
     no_orphans := by intro _ _ _; rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
-    no_holes_in_children := by intro _ _ _; rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
+    no_holes_in_children := by rintro _ ⟨_, eq⟩ _ _; rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
 
   def get? (t : PossiblyInfiniteTree α) (ns : List Nat) : Option α := t.infinite_tree.get ns
 
@@ -44,7 +43,7 @@ namespace PossiblyInfiniteTree
   def drop (t : PossiblyInfiniteTree α) (ns : List Nat) : PossiblyInfiniteTree α where
     infinite_tree := t.infinite_tree.drop ns
     no_orphans := by intro ns'; rw [InfiniteTreeSkeleton.get_drop]; intro eq_none n; rw [InfiniteTreeSkeleton.drop_drop]; apply t.no_orphans; exact eq_none
-    no_holes_in_children := by intro ns; rw [InfiniteTreeSkeleton.drop_drop]; apply t.no_holes_in_children
+    no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_drop ns)
 
   -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
   def IsSuffix (t1 t2 : PossiblyInfiniteTree α) : Prop := t1.infinite_tree <:+ t2.infinite_tree
@@ -163,9 +162,9 @@ namespace PossiblyInfiniteTree
     infinite_list := fun n => PossiblyInfiniteTreeWithRoot.tree_to_opt {
       infinite_tree := t.infinite_tree.childTrees.get n
       no_orphans := by intro ns; rw [InfiniteTreeSkeleton.get_get_childTrees]; intro eq_none n'; rw [InfiniteTreeSkeleton.get_childTrees, InfiniteTreeSkeleton.drop_drop]; apply t.no_orphans; exact eq_none
-      no_holes_in_children := by intro ns; rw [InfiniteTreeSkeleton.get_childTrees, InfiniteTreeSkeleton.drop_drop]; apply t.no_holes_in_children
+      no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_of_mem_childTrees _ InfiniteList.get_mem)
     }
-    no_holes := by intro n'; simp only [InfiniteList.get]; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; exact t.no_holes_in_children [] n'
+    no_holes := by intro n'; simp only [InfiniteList.get]; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; exact t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl n'
 
   theorem mem_childTrees_iff {t : PossiblyInfiniteTree α} : ∀ c, c ∈ t.childTrees ↔ c.val.infinite_tree ∈ t.infinite_tree.childTrees := by
     intro c; unfold childTrees
@@ -203,12 +202,12 @@ namespace PossiblyInfiniteTree
         apply (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_orphans
         exact eq_none
     no_holes_in_children := by
-      intro ns
+      rintro _ ⟨ns, eq⟩
       cases ns with
-      | nil => rw [InfiniteTreeSkeleton.drop_nil]; unfold InfiniteTreeSkeleton.childNodes; rw [InfiniteTreeSkeleton.childTrees_node]; intro n; simp only [InfiniteList.get_map, Function.comp_apply]; rw [← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact childTrees.no_holes n
+      | nil => rw [← eq, InfiniteTreeSkeleton.drop_nil]; unfold InfiniteTreeSkeleton.childNodes; rw [InfiniteTreeSkeleton.childTrees_node]; intro n; simp only [InfiniteList.get_map, Function.comp_apply]; rw [← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact childTrees.no_holes n
       | cons n ns =>
-        rw [InfiniteTreeSkeleton.drop_node_cons, InfiniteList.get_map]
-        exact (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_holes_in_children ns
+        rw [← eq, InfiniteTreeSkeleton.drop_node_cons, InfiniteList.get_map]
+        exact (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_holes_in_children _ (by exists ns)
 
   theorem get?_node_nil {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by rfl
   theorem get?_node_cons {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : ∀ n ns, (node root childTrees).get? (n :: ns) = (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.get? n)).get? ns := by intro n ns; rfl
@@ -239,7 +238,7 @@ namespace PossiblyInfiniteTree
 
   def childNodes (t : PossiblyInfiniteTree α) : PossiblyInfiniteList α where
     infinite_list := t.infinite_tree.childNodes
-    no_holes := t.no_holes_in_children []
+    no_holes := t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl
 
   theorem get?_childNodes {t : PossiblyInfiniteTree α} : ∀ {n}, t.childNodes.get? n = (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).root := by
     intro n; rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]; rfl
@@ -562,8 +561,8 @@ namespace PossiblyInfiniteTree
         apply b.no_holes
         exact eq_none
     no_holes_in_children := by
-      intro ns n _
-      rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
+      rintro _ ⟨ns, eq⟩ n _
+      rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
       simp only [InfiniteTreeSkeleton.get]
       have : (ns ++ [n.succ]).all (fun e => e = 0) = false := by
         rw [List.all_eq_false]
