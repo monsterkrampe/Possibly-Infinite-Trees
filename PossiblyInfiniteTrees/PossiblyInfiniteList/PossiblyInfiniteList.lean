@@ -8,7 +8,7 @@ We mimic Mathlib's Stream'.Seq a lot here.
 Still I keep this separate to have full control about all the details.
 In the end, what we need should be simple enough.
 
-This file defines a `PossiblyInfiniteList` which is an `InfiniteList` into an Option over the desired type.
+This file defines a `PossiblyInfiniteList` which is an `InfiniteList` over an `Option` of the desired type.
 The offered functions are very similar to the ones of `InfiniteList`.
 -/
 

@@ -72,7 +72,7 @@ theorem get_drop {t : InfiniteTreeSkeleton α} {ns ns' : List Nat} : (t.drop ns)
 /-- Helper theorem stating the definition of drop. -/
 theorem drop_eq {t : InfiniteTreeSkeleton α} {ns : List Nat} : t.drop ns = fun ns' => t.get (ns ++ ns') := rfl
 
-/-- Dropping the empty list changes nothing. -/
+/-- Dropping the empty address changes nothing. -/
 theorem drop_nil {t : InfiniteTreeSkeleton α} : t.drop [] = t := by rfl
 
 /-- Two calls to drop can be combined. -/
@@ -98,7 +98,7 @@ theorem get_node_nil {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleto
 /-- Getting any address != [] on `node` yields the respective element from the previous `InfiniteTreeSkeleton`. -/
 theorem get_node_cons {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : ∀ n ns, (node root childTrees).get (n :: ns) = (childTrees.get n).get ns := by intro n ns; rfl
 
-/-- Dropping from `node` with an address of the form `n::ns` is the same as getting the `n` child from the child trees used in the construction and then dropping `ns` there,  -/
+/-- Dropping from `node` with an address of the form `n::ns` is the same as getting the `n` child from the child trees used in the construction and then dropping `ns` there.  -/
 theorem drop_node_cons {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} {n : Nat} {ns : List Nat} :
   (node root childTrees).drop (n::ns) = (childTrees.get n).drop ns := by rfl
 
@@ -192,7 +192,7 @@ This can be used with the `induction` tactic to prove a property for each `Eleme
 Note that for using this coveniently, the goal needs to expressed (rewritten) using an `Element`.
 -/
 
-/-- A list `Element` is a Subtype featuring a proof of being a tree member. -/
+/-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
 def Element (t : InfiniteTreeSkeleton α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
@@ -223,11 +223,11 @@ section Branches
 /-!
 # Branches
 
-Branches are essentially `InfiniteList` in an `InfiniteTreeSkeleton`
+Branches are essentially `InfiniteList`s in an `InfiniteTreeSkeleton`
 and can be characterizes by an infinite "address", i.e. `InfiniteList Nat`.
 -/
 
-/-- This function defines the `InfiniteList` of tree elemenets that corresponds to a given infinite address. -/
+/-- This function defines the `InfiniteList` of tree elements that corresponds to a given infinite address. -/
 def branchForAddress (t : InfiniteTreeSkeleton α) (ns : InfiniteList Nat) : InfiniteList α := fun n => t.get (ns.take n)
 
 /-- The `branches` in the `InfiniteTreeSkeleton` are exactly the `InfiniteList`s for which an infinite address exists. -/
