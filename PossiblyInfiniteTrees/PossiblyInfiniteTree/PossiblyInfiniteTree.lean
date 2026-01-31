@@ -209,7 +209,7 @@ def childTrees (t : PossiblyInfiniteTree α) : PossiblyInfiniteList (PossiblyInf
   }
   no_holes := by intro n'; simp only [InfiniteList.get]; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; exact t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl n'
 
-/-- `PossiblyInfiniteTree.childTrees` can be expressed through `InfiniteList.childTrees`. -/
+/-- `PossiblyInfiniteTree.childTrees` can be expressed through `InfiniteTreeSkeleton.childTrees`. -/
 theorem mem_childTrees_iff {t : PossiblyInfiniteTree α} : ∀ c, c ∈ t.childTrees ↔ c.val.infinite_tree ∈ t.infinite_tree.childTrees := by
   intro c; unfold childTrees
   simp only [PossiblyInfiniteList.mem_iff, PossiblyInfiniteList.get?, InfiniteList.get, PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff]
@@ -443,7 +443,7 @@ section Branches
 /-!
 # Branches
 
-Branches are essentially `PossiblyInfiniteList`s in an `PossiblyInfiniteTree`
+Branches are essentially `PossiblyInfiniteList`s in a `PossiblyInfiniteTree`
 and can be characterizes by an infinite "address", i.e. `InfiniteList Nat`.
 -/
 
