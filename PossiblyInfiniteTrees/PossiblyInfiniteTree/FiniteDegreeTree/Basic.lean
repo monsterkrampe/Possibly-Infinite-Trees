@@ -2,10 +2,12 @@ import BasicLeanDatastructures.Set.Finite
 
 import PossiblyInfiniteTrees.PossiblyInfiniteTree.PossiblyInfiniteTree
 
-def PossiblyInfiniteTree.finitely_many_children (t : PossiblyInfiniteTree α) : Prop := ∀ ns : List Nat, (t.drop ns).childTrees.finite
+def PossiblyInfiniteTree.finitely_many_children (t : PossiblyInfiniteTree α) : Prop :=
+  ∀ subtree, subtree <:+ t -> subtree.childTrees.finite
 
-theorem PossiblyInfiniteTree.finitely_many_children_empty {α} : (@PossiblyInfiniteTree.empty α).finitely_many_children := by
-  intro ns; exists 0
+theorem PossiblyInfiniteTree.finitely_many_children_empty {α} :
+    (@PossiblyInfiniteTree.empty α).finitely_many_children := by
+  intro _ suf; rw [empty_suffix_of_empty suf, childTrees_empty]; exact PossiblyInfiniteList.finite_empty
 
 structure FiniteDegreeTree (α : Type u) where
   tree : PossiblyInfiniteTree α
@@ -24,7 +26,7 @@ namespace FiniteDegreeTree
 
   def drop (t : FiniteDegreeTree α) (ns : List Nat) : FiniteDegreeTree α where
     tree := t.tree.drop ns
-    finitely_many_children := by intro ns'; rw [PossiblyInfiniteTree.drop_drop]; exact t.finitely_many_children (ns ++ ns')
+    finitely_many_children := by intro _ suf; exact t.finitely_many_children _ (PossiblyInfiniteTree.IsSuffix_trans suf (PossiblyInfiniteTree.IsSuffix_drop ns))
 
   -- inspired by List.IsSuffix; see https://github.com/leanprover/lean4/blob/9d4ad1273f6cea397c3066c2c83062a4410d16bf/src/Init/Data/List/Basic.lean#L1205
   def IsSuffix (t1 t2 : FiniteDegreeTree α) : Prop := t1.tree <:+ t2.tree
@@ -145,14 +147,14 @@ namespace FiniteDegreeTree
   end FiniteDegreeTreeWithRoot
 
   def childTrees (t : FiniteDegreeTree α) : List (FiniteDegreeTreeWithRoot α) :=
-    (t.tree.childTrees.toList_of_finite (t.finitely_many_children [])).attach.map (fun t' => FiniteDegreeTreeWithRoot.from_possibly_infinite t'.val (by
-      intro ns
+    (t.tree.childTrees.toList_of_finite (t.finitely_many_children _ PossiblyInfiniteTree.IsSuffix_refl)).attach.map (fun t' => FiniteDegreeTreeWithRoot.from_possibly_infinite t'.val (by
+      intro _ ; rw [PossiblyInfiniteTree.IsSuffix_iff]; rintro ⟨ns, suf⟩
       have t'_mem := t'.property
       rw [PossiblyInfiniteList.mem_toList_of_finite, PossiblyInfiniteList.mem_iff] at t'_mem;
       rcases t'_mem with ⟨n, t'_mem⟩
       rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff] at t'_mem
-      rw [← t'_mem.left]
-      exact t.finitely_many_children (n::ns)))
+      rw [← suf, ← t'_mem.left]
+      exact t.finitely_many_children _ (PossiblyInfiniteTree.IsSuffix_drop (n::ns))))
 
   theorem mem_childTrees_iff {t : FiniteDegreeTree α} : ∀ c, c ∈ t.childTrees ↔ c.to_possibly_infinite ∈ t.tree.childTrees := by
     intro c
@@ -173,13 +175,13 @@ namespace FiniteDegreeTree
   def node (root : α) (childTrees : List (FiniteDegreeTreeWithRoot α)) : FiniteDegreeTree α where
     tree := PossiblyInfiniteTree.node root (PossiblyInfiniteList.from_list (childTrees.map FiniteDegreeTreeWithRoot.to_possibly_infinite))
     finitely_many_children := by
-      intro ns
+      intro _; rw [PossiblyInfiniteTree.IsSuffix_iff]; intro ⟨ns, suf⟩; rw [← suf]
       cases ns with
       | nil => exists childTrees.length; rw [PossiblyInfiniteTree.drop_nil, PossiblyInfiniteTree.childTrees_node, PossiblyInfiniteList.get?_from_list, List.getElem?_map, (List.getElem?_eq_none (by simp)), Option.map_none]
       | cons n ns =>
         rw [PossiblyInfiniteTree.drop_node_cons, PossiblyInfiniteList.get?_from_list, List.getElem?_map]
         cases Decidable.em (n < childTrees.length) with
-        | inl n_le => rw [List.getElem?_eq_getElem n_le]; exact childTrees[n].val.finitely_many_children ns
+        | inl n_le => rw [List.getElem?_eq_getElem n_le]; exact childTrees[n].val.finitely_many_children _ (by exists ns)
         | inr n_le => rw [List.getElem?_eq_none (Nat.le_of_not_lt n_le), Option.map_none]; simp only [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree]; rw [PossiblyInfiniteTree.drop_empty, PossiblyInfiniteTree.childTrees_empty]; exact PossiblyInfiniteList.finite_empty
 
   theorem get?_node_nil {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by rfl
@@ -249,7 +251,7 @@ namespace FiniteDegreeTree
     unfold FiniteDegreeTreeWithRoot.opt_to_tree
     simp only [PossiblyInfiniteList.get?_from_list, List.getElem?_map]
 
-  def childNodes (t : FiniteDegreeTree α) : List α := t.tree.childNodes.toList_of_finite (by rcases t.finitely_many_children [] with ⟨k, fin⟩; exists k; rw [PossiblyInfiniteTree.get?_childNodes, ← PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact fin)
+  def childNodes (t : FiniteDegreeTree α) : List α := t.tree.childNodes.toList_of_finite (by rcases t.finitely_many_children _ PossiblyInfiniteTree.IsSuffix_refl with ⟨k, fin⟩; exists k; rw [PossiblyInfiniteTree.get?_childNodes, ← PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact fin)
 
   theorem get?_childNodes {t : FiniteDegreeTree α} : ∀ {n : Nat}, t.childNodes[n]? = (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).root := by
     intro n
@@ -263,7 +265,7 @@ namespace FiniteDegreeTree
   theorem childNodes_eq {t : FiniteDegreeTree α} : t.childNodes = t.childTrees.map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
     unfold childNodes
     simp only [PossiblyInfiniteTree.childNodes_eq]
-    rw [← PossiblyInfiniteList.map_toList_of_finite (l := t.tree.childTrees) (fin := (t.finitely_many_children []))]
+    rw [← PossiblyInfiniteList.map_toList_of_finite (l := t.tree.childTrees) (fin := (t.finitely_many_children _ PossiblyInfiniteTree.IsSuffix_refl))]
     apply List.ext_getElem
     . simp only [List.length_map, childTrees, List.length_attach]
     . intro i _ _
@@ -298,11 +300,9 @@ namespace FiniteDegreeTree
       . rcases ih with ⟨r, r_mem, ih⟩; rw [← suffix] at r_mem; exists r, r_mem
       . rw [← suffix] at c_mem; unfold childNodes; rw [PossiblyInfiniteList.mem_toList_of_finite]; exact c_mem
 
-  theorem no_orphans {t : FiniteDegreeTree α} : ∀ ns : List Nat, t.get? ns = none -> ∀ n : Nat, (t.drop ns).childNodes[n]? = none := by intro ns eq_none n; unfold childNodes; rw [PossiblyInfiniteList.getElem?_toList_of_finite]; apply t.tree.no_orphans'; exact eq_none
-
-  theorem no_orphans_closure {t : FiniteDegreeTree α} :
-      ∀ ns : List Nat, t.get? ns = none -> ∀ ns', (t.drop ns).get? ns' = none := by
-    exact t.tree.no_orphans'_closure
+  theorem no_orphans {t : FiniteDegreeTree α} :
+      ∀ subtree, subtree <:+ t -> subtree.root = none -> subtree.childNodes = [] := by
+    intro _; unfold childNodes; rw [PossiblyInfiniteList.toList_of_finite_empty_iff]; apply t.tree.no_orphans'
 
   def branches (t : FiniteDegreeTree α) : Set (PossiblyInfiniteList α) := t.tree.branches
 
@@ -332,9 +332,8 @@ namespace FiniteDegreeTree
         rw [← PossiblyInfiniteList.get?.eq_def] at c_mem
         rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff] at c_mem
         exists FiniteDegreeTreeWithRoot.from_possibly_infinite c (by
-          intro ns
-          rw [← c_mem.left, PossiblyInfiniteTree.drop_drop]
-          apply t.finitely_many_children)
+          rw [← c_mem.left]; intro _ suf
+          apply t.finitely_many_children _ (PossiblyInfiniteTree.IsSuffix_trans suf (PossiblyInfiniteTree.IsSuffix_drop _)))
         constructor
         . rw [List.mem_iff_getElem?]
           exists i
@@ -410,7 +409,7 @@ namespace FiniteDegreeTree
   def from_branch (b : PossiblyInfiniteList α) : FiniteDegreeTree α where
     tree := PossiblyInfiniteTree.from_branch b
     finitely_many_children := by
-      intro ns
+      intro _; rw [PossiblyInfiniteTree.IsSuffix_iff]; intro ⟨_, suf⟩; rw [← suf]
       exists 1
       rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.drop_drop]
       rw [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]

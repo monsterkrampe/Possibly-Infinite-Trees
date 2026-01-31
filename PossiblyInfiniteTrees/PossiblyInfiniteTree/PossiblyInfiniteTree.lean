@@ -12,22 +12,18 @@ it may have infinite depth and each node may have infinitely many (direct) child
 
 /-- An `InfiniteTreeSkeleton` over `Option` has `no_orphans` if an element being `none` implies its `InfiniteTreeSkeleton.childNodes` also being `none`. That is, intuitively, every non-none node needs to have a non-none parent. This is a property that we want for possibly infinite trees but we need to be able to express it on the underlying infinite tree first. -/
 def InfiniteTreeSkeleton.no_orphans (t : InfiniteTreeSkeleton (Option α)) : Prop :=
-  ∀ ns : List Nat, t.get ns = none -> ∀ n, (t.drop ns).childNodes.get n = none
+  ∀ subtree, subtree <:+ t -> subtree.root = none -> ∀ n ∈ subtree.childNodes, n = none
 
 /-- A closed version of the `no_orphans` property. That is, if an element is none, then not only its immediate childNodes but all nodes in all subtrees are none. -/
 theorem InfiniteTreeSkeleton.no_orphans_closure {t : InfiniteTreeSkeleton (Option α)} (no_orph : t.no_orphans) :
-    ∀ ns : List Nat, t.get ns = none -> ∀ ns', (t.drop ns).get ns' = none := by
-  intro ns eq_none ns'
-  induction ns' generalizing ns with
-  | nil => rw [get_drop, List.append_nil]; exact eq_none
-  | cons hd tl ih =>
-    specialize ih (ns ++ [hd]) (by
-      have := no_orph ns eq_none hd
-      rw [get_childNodes, get_drop] at this
-      exact this)
-    rw [get_drop, List.append_assoc, List.singleton_append] at ih
-    rw [get_drop]
-    exact ih
+    ∀ subtree, subtree <:+ t -> subtree.root = none -> ∀ n ∈ subtree, n = none := by
+  intro subtree suf root_none node node_mem
+  let node : subtree.Element := ⟨node, node_mem⟩
+  show node.val = none
+  induction node using InfiniteTreeSkeleton.mem_rec with
+  | root => exact root_none
+  | step t2 suf2 ih next_mem =>
+    exact no_orph _ (InfiniteTreeSkeleton.IsSuffix_trans suf2 suf) ih _ next_mem
 
 /-- A `PossiblyInfiniteTree` is an `InfiniteTreeSkeleton` over `Option` that has `no_orphans` and also for each subtree, its `InfiniteTreeSkeleton.childNodes` have `InfiniteList.no_holes`. The last condition is necessary because we want the trees to be somewhat "compact", meaning that we want to forbid that e.g. the second child for a node is defined but the first child is none. Note that this would not be captured by the `InfiniteTreeSkeleto.no_orphans` property yet. -/
 structure PossiblyInfiniteTree (α : Type u) where
@@ -52,7 +48,7 @@ def get? (t : PossiblyInfiniteTree α) (ns : List Nat) : Option α := t.infinite
 /-- Obtains the subtree at the given address (by dropping everything else). -/
 def drop (t : PossiblyInfiniteTree α) (ns : List Nat) : PossiblyInfiniteTree α where
   infinite_tree := t.infinite_tree.drop ns
-  no_orphans := by intro ns'; rw [InfiniteTreeSkeleton.get_drop]; intro eq_none n; rw [InfiniteTreeSkeleton.drop_drop]; apply t.no_orphans; exact eq_none
+  no_orphans := by intro _ suf; apply t.no_orphans; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_drop ns)
   no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_drop ns)
 
 /-- Get the element at the root of the tree (i.e. at the empty address). -/
@@ -105,7 +101,7 @@ The `empty` `PossiblyInfiniteTree` is simply the `PossiblyInfiniteTree` that is 
 /-- The empty `PossiblyInfiniteTree` is none everywhere. -/
 def empty : PossiblyInfiniteTree α where
   infinite_tree := fun _ => none
-  no_orphans := by intro _ _ _; rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
+  no_orphans := by rintro _ ⟨_, eq⟩ _ _ ⟨_, eq2⟩; rw [← eq2, ← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
   no_holes_in_children := by rintro _ ⟨_, eq⟩ _ _; rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
 
 /-- Getting from the `empty` tree always returns none. -/
@@ -126,16 +122,9 @@ theorem empty_iff_root_none {t : PossiblyInfiniteTree α} : t = PossiblyInfinite
   rw [root_eq] at h
   apply PossiblyInfiniteTree.ext
   intro ns
-  induction ns generalizing t with
-  | nil => rw [h]; rfl
-  | cons n ns ih =>
-    rw [← List.singleton_append, ← get?_drop];
-    rw [ih]
-    . rfl
-    . rw [get?_drop]
-      have := t.no_orphans [] h n
-      rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop] at this
-      exact this
+  rw [get?_empty]
+  apply InfiniteTreeSkeleton.no_orphans_closure t.no_orphans _ InfiniteTreeSkeleton.IsSuffix_refl h
+  apply InfiniteTreeSkeleton.get_mem
 
 end Empty
 
@@ -215,7 +204,7 @@ With `PossiblyInfiniteTreeWithRoot` in place, we can now define the actual `chil
 def childTrees (t : PossiblyInfiniteTree α) : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α) where
   infinite_list := fun n => PossiblyInfiniteTreeWithRoot.tree_to_opt {
     infinite_tree := t.infinite_tree.childTrees.get n
-    no_orphans := by intro ns; rw [InfiniteTreeSkeleton.get_get_childTrees]; intro eq_none n'; rw [InfiniteTreeSkeleton.get_childTrees, InfiniteTreeSkeleton.drop_drop]; apply t.no_orphans; exact eq_none
+    no_orphans := by intro _ suf; apply t.no_orphans; apply InfiniteTreeSkeleton.IsSuffix_trans suf; apply InfiniteTreeSkeleton.IsSuffix_of_mem_childTrees; apply InfiniteList.get_mem
     no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_of_mem_childTrees _ InfiniteList.get_mem)
   }
   no_holes := by intro n'; simp only [InfiniteList.get]; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; exact t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl n'
@@ -261,16 +250,14 @@ Similar to the `InfiniteTreeSkeleton`, we can also define a `node` constructor o
 def node (root : α) (childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)) : PossiblyInfiniteTree α where
   infinite_tree := InfiniteTreeSkeleton.node (.some root) (childTrees.infinite_list.map (PossiblyInfiniteTree.infinite_tree ∘ PossiblyInfiniteTreeWithRoot.opt_to_tree))
   no_orphans := by
-    intro ns
+    intro _ ⟨ns, eq⟩
     cases ns with
-    | nil => intro contra; rw [← InfiniteTreeSkeleton.root.eq_def, InfiniteTreeSkeleton.root_node] at contra; simp at contra
+    | nil => rintro contra _ ⟨_, eq2⟩; rw [← eq, InfiniteTreeSkeleton.drop_nil, InfiniteTreeSkeleton.root_node] at contra; simp at contra
     | cons n ns =>
-      rw [← InfiniteTreeSkeleton.childTrees.eq_def, InfiniteTreeSkeleton.childTrees_node]
-      intro eq_none n'
-      unfold InfiniteList.map at eq_none
-      rw [InfiniteTreeSkeleton.drop_node_cons, InfiniteList.get_map]
+      rw [InfiniteTreeSkeleton.drop_node_cons] at eq
+      rw [← eq]
       apply (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_orphans
-      exact eq_none
+      exists ns
   no_holes_in_children := by
     rintro _ ⟨ns, eq⟩
     cases ns with
@@ -350,14 +337,6 @@ theorem mem_of_mem_childNodes {t : PossiblyInfiniteTree α} : ∀ c ∈ t.childN
 theorem childNodes_empty {α} : (@PossiblyInfiniteTree.empty α).childNodes = PossiblyInfiniteList.empty := by
   apply PossiblyInfiniteList.ext; intro _; rw [get?_childNodes, childTrees_empty, PossiblyInfiniteList.get?_empty, PossiblyInfiniteList.get?_empty, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
 
-/-- We can express the `InfiniteTreeSkeleton.no_orphans` condition directly on `PossiblyInfiniteTree`. -/
-theorem no_orphans' {t : PossiblyInfiniteTree α} : ∀ ns : List Nat, t.get? ns = none -> ∀ n, (t.drop ns).childNodes.get? n = none := by exact t.no_orphans
-
-/-- We can also express the `InfiniteTreeSkeleton.no_orphans_closure` directly on `PossiblyInfiniteTree`. -/
-theorem no_orphans'_closure {t : PossiblyInfiniteTree α} :
-    ∀ ns : List Nat, t.get? ns = none -> ∀ ns', (t.drop ns).get? ns' = none := by
-  exact t.infinite_tree.no_orphans_closure t.no_orphans
-
 end ChildNodes
 
 section Suffixes
@@ -401,6 +380,18 @@ theorem IsSuffix_drop {t : PossiblyInfiniteTree α} : ∀ ns, t.drop ns <:+ t :=
 theorem IsSuffix_of_mem_childTrees {t : PossiblyInfiniteTree α} : ∀ c ∈ t.childTrees, c <:+ t := by
   intro c c_mem; apply t.infinite_tree.IsSuffix_of_mem_childTrees; rw [mem_childTrees_iff] at c_mem; exact c_mem
 
+/-- Every suffix of the empty tree is empty. -/
+theorem empty_suffix_of_empty {t : PossiblyInfiniteTree α} : t <:+ empty -> t = empty := by
+  intro suf; rw [IsSuffix_iff] at suf; rcases suf with ⟨_, suf⟩; rw [← suf]; exact drop_empty
+
+/-- We can express the `InfiniteTreeSkeleton.no_orphans` condition directly on `PossiblyInfiniteTree`. -/
+theorem no_orphans' {t : PossiblyInfiniteTree α} :
+    ∀ subtree, subtree <:+ t -> subtree.root = none -> subtree.childNodes = PossiblyInfiniteList.empty := by
+  intro subtree suf root_none
+  rw [PossiblyInfiniteList.empty_iff_head_none]
+  apply t.no_orphans _ suf root_none
+  exact subtree.infinite_tree.childNodes.head_mem
+
 end Suffixes
 
 section ElementRecursor
@@ -430,21 +421,18 @@ theorem mem_rec
     induction a' using InfiniteTreeSkeleton.mem_rec with
     | root => exact root
     | step t2 suffix ih c_mem =>
-      rcases suffix with ⟨ns, suffix⟩
-      rcases c_mem with ⟨m, c_mem⟩
-      rw [← suffix] at c_mem
-      simp only [← c_mem]
-      cases eq : (t.infinite_tree.drop ns).root with
-      | none =>
-        intro _ mem
-        rw [InfiniteTreeSkeleton.root_drop] at eq
-        simp [(t.no_orphans ns eq m)] at mem
+      cases eq : t2.root with
+      | none => intro _ mem; simp [t.no_orphans t2 suffix eq _ c_mem] at mem
       | some r =>
+        rcases suffix with ⟨ns, suffix⟩
+        rcases c_mem with ⟨m, c_mem⟩
+        rw [← suffix] at eq
+        rw [← suffix] at c_mem
         specialize step (t.drop ns) (t.IsSuffix_drop ns)
         intro v v_mem
         apply step
         . exists r, eq; apply ih; simp [← suffix, eq]
-        . exists m
+        . exists m; rw [← v_mem]; exact c_mem
   apply this
   rfl
 
@@ -468,8 +456,9 @@ def branchForAddress (t : PossiblyInfiniteTree α) (ns : InfiniteList Nat) : Pos
     intro eq_none
     rw [InfiniteTreeSkeleton.get_branchForAddress]
     rw [InfiniteList.take_succ']
-    apply t.no_orphans
-    exact eq_none
+    apply t.no_orphans (t.infinite_tree.drop (ns.take n)) (t.infinite_tree.IsSuffix_drop (ns.take n))
+    . rw [InfiniteTreeSkeleton.root_drop]; exact eq_none
+    . exists (ns.get n)
 
 /-- An infinite address is maximal in a `PossiblyInfiniteTree` if whenever the the tree element is `none` at the nth step of the address, then all of its siblings are also none (and it is enough to demand that the first sibling is none). -/
 def branchAddressIsMaximal (t : PossiblyInfiniteTree α) (ns : InfiniteList Nat) : Prop :=
@@ -758,18 +747,19 @@ where the list is the "first" branch (with the address that only consists of zer
 def from_branch (b : PossiblyInfiniteList α) : PossiblyInfiniteTree α where
   infinite_tree := fun ns => if ns.all (fun e => e = 0) then b.infinite_list ns.length else none
   no_orphans := by
-    intro ns eq_none n
-    simp only [InfiniteTreeSkeleton.get] at eq_none
-    rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
+    intro _ ⟨ns, eq⟩ root_none _ ⟨n, mem⟩
+    rw [← mem, ← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
+    rw [← eq, InfiniteTreeSkeleton.root_drop] at root_none
     simp only [InfiniteTreeSkeleton.get]
+    simp only [InfiniteTreeSkeleton.get] at root_none
     cases eq : (ns ++ [n]).all (fun e => e = 0) with
     | false => rfl
     | true =>
       have : ns.all (fun e => e = 0) := by rw [List.all_append, Bool.and_eq_true] at eq; exact eq.left
-      simp only [this] at eq_none
+      simp only [this] at root_none
       simp only [List.length_append, List.length_singleton]
       apply b.no_holes
-      exact eq_none
+      exact root_none
   no_holes_in_children := by
     rintro _ ⟨ns, eq⟩ n _
     rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
