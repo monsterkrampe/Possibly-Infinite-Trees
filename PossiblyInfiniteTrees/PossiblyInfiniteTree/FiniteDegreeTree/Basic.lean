@@ -85,6 +85,35 @@ theorem root_drop {t : FiniteDegreeTree α} {ns : List Nat} : (t.drop ns).root =
 
 end Basic
 
+section Empty
+
+/-!
+## Empty Infinite Trees
+
+The `empty` `FiniteDegreeTree` is simply the `FiniteDegreeTree` that is `none` on all addresses. That is, its underlying `PossiblyInfiniteTree` is `PossiblyInfiniteTree.empty`.
+-/
+
+/-- The empty `FiniteDegreeTree` is essentially `PossiblyInfiniteTree.empty`. -/
+def empty : FiniteDegreeTree α where
+  tree := PossiblyInfiniteTree.empty
+  finitely_many_children := PossiblyInfiniteTree.finitely_many_children_empty
+
+/-- Getting from the `empty` tree always returns none. -/
+theorem get?_empty {α} : ∀ {n}, (@FiniteDegreeTree.empty α).get? n = none := by intro _; rfl
+
+/-- Dropping from the `empty` tree again yields the empty tree. -/
+theorem drop_empty {α} : ∀ {ns}, (@FiniteDegreeTree.empty α).drop ns = FiniteDegreeTree.empty := by
+  intro _; apply ext; intro _; rw [get?_drop, get?_empty, get?_empty]
+
+/-- The `root` of the `empty` tree is none. -/
+theorem root_empty {α} : (@FiniteDegreeTree.empty α).root = none := by rfl
+
+/-- A tree is `empty` if and only if the `root` is none. -/
+theorem empty_iff_root_none {t : FiniteDegreeTree α} : t = FiniteDegreeTree.empty ↔ t.root = none := by
+  rw [FiniteDegreeTree.mk.injEq]; simp only [empty]; rw [PossiblyInfiniteTree.empty_iff_root_none]; rfl
+
+end Empty
+
 section ChildTrees
 
 /-!
@@ -246,6 +275,11 @@ theorem get_childTrees {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childTrees
 /-- Getting at an address in a child tree can be combined into a single get call. -/
 theorem get?_get?_childTrees {t : FiniteDegreeTree α} : ∀ n ns, (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).get? ns = t.get? (n::ns) := by intros; rw [get?_childTrees, FiniteDegreeTreeWithRoot.opt_to_tree_after_tree_to_opt]; rfl
 
+/-- The `childTrees` of the `empty` tree are exactly `[]`. -/
+theorem childTrees_empty {α} : (@FiniteDegreeTree.empty α).childTrees = [] := by
+  simp only [childTrees, List.map_eq_nil_iff, List.attach_eq_nil_iff, PossiblyInfiniteList.toList_of_finite_empty_iff, empty]
+  exact PossiblyInfiniteTree.childTrees_empty
+
 end ChildTrees
 
 section Node
@@ -365,6 +399,11 @@ theorem get_childNodes {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childNodes
 theorem mem_of_mem_childNodes {t : FiniteDegreeTree α} : ∀ c ∈ t.childNodes, c ∈ t := by
   intro c c_mem; apply t.tree.mem_of_mem_childNodes; unfold childNodes at c_mem; rw [PossiblyInfiniteList.mem_toList_of_finite] at c_mem; exact c_mem
 
+/-- The `childNodes` of the `empty` tree are `[]`. -/
+theorem childNodes_empty {α} : (@FiniteDegreeTree.empty α).childNodes = [] := by
+  simp only [childNodes, PossiblyInfiniteList.toList_of_finite_empty_iff, empty]
+  exact PossiblyInfiniteTree.childNodes_empty
+
 end ChildNodes
 
 section Suffixes
@@ -407,6 +446,10 @@ theorem IsSuffix_drop {t : FiniteDegreeTree α} : ∀ ns, t.drop ns <:+ t := t.t
 theorem IsSuffix_of_mem_childTrees {t : FiniteDegreeTree α} : ∀ c ∈ t.childTrees, c.val <:+ t := by
   intro c c_mem; rw [mem_childTrees_iff] at c_mem
   exact t.tree.IsSuffix_of_mem_childTrees _ c_mem
+
+/-- Every suffix of the empty tree is empty. -/
+theorem empty_suffix_of_empty {t : FiniteDegreeTree α} : t <:+ empty -> t = empty := by
+  intro suf; rw [IsSuffix_iff] at suf; rcases suf with ⟨_, suf⟩; rw [← suf]; exact drop_empty
 
 /-- We can express the `PossiblyInfiniteTree.no_orphans'` condition directly on `FiniteDegreeTree`. -/
 theorem no_orphans {t : FiniteDegreeTree α} :
