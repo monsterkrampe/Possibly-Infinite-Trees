@@ -233,8 +233,12 @@ def iterate (start : α) (generator : α -> α) : InfiniteList α
 | .zero => start
 | .succ n => generator (iterate start generator n)
 
+/-- When getting the successor of a number `n` from an interated list, we can instead get the nth element and apply the generator once mode. -/
+theorem get_succ_iterate {start : α} {generator : α -> α} :
+  ∀ n, (iterate start generator).get n.succ = generator ((iterate start generator).get n) := by intros; rfl
+
 /-- When getting the successor of a number `n` from an interated list, we can instead apply the generator once initially, then iterate and then get the nth element. -/
-theorem get_succ_iterate {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
+theorem get_succ_iterate' {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
   intro n; induction n with
   | zero => simp [get, iterate]
   | succ n ih => simp only [get, iterate] at *; rw [ih]
@@ -256,7 +260,7 @@ theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β
 /-- The successor of the nth element of a generated list can be seen as taking the nth element after initializing the generation process with the generator function already applied once in the beginning. -/
 theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get n.succ = (generate (generator start) generator mapper).get n := by
-  intro n; simp only [generate, get_map, get_succ_iterate]
+  intro n; simp only [generate, get_map, get_succ_iterate']
 
 /-- The tail of a generated list is the list generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).tail = generate (generator start) generator mapper := by
