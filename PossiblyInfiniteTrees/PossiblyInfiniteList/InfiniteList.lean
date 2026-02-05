@@ -243,6 +243,14 @@ theorem get_succ_iterate' {start : α} {generator : α -> α} : ∀ n, (iterate 
   | zero => simp [get, iterate]
   | succ n ih => simp only [get, iterate] at *; rw [ih]
 
+/-- When getting the sum of two numbers `n+m` from an interated list, we can instead generate the nth value, and use that as the starting value for another m iterations. -/
+theorem get_add_iterate {start : α} {generator : α -> α} : ∀ n m, (iterate start generator).get (n + m) = (iterate ((iterate start generator).get n) generator).get m := by
+  intro n m; induction m generalizing n with
+  | zero => simp [get, iterate]
+  | succ m ih =>
+    conv => left; rw [Nat.add_comm m 1, ← Nat.add_assoc, ih n.succ, get_succ_iterate]
+    conv => right; rw [get_succ_iterate']
+
 /-- Instead of only iterating, we may want to create a kind of "carrier" list and then map this to the actually desired list. This is useful when the generator function requires more information that what actually ends up being in the desired list. Note that this is essentially the same as Stream'.corec from Mathlib. -/
 def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
 
