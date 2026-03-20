@@ -1,6 +1,8 @@
-import BasicLeanDatastructures.Set.Basic
+module
 
-import PossiblyInfiniteTrees.PossiblyInfiniteList.PossiblyInfiniteList
+public import BasicLeanDatastructures.Set.Basic
+
+public import PossiblyInfiniteTrees.PossiblyInfiniteList.PossiblyInfiniteList
 
 /-!
 # InfiniteTreeSkeleton
@@ -21,7 +23,10 @@ The convenience of this function lies in the theorem `generate_branch_mem_branch
 that the generated `InfiniteList` is indeed a branch in the `InfiniteTreeSkeleton`.
 -/
 
+public section
+
 /-- An `InfiniteTreeSkeleton` is a function from a list of naturals (representing an address in the tree) into the desired type. -/
+@[expose]
 def InfiniteTreeSkeleton (α : Type u) := (List Nat) -> α
 
 namespace InfiniteTreeSkeleton
@@ -49,67 +54,82 @@ def childTrees (t : InfiniteTreeSkeleton α) : InfiniteList (InfiniteTreeSkeleto
 /-- Construct an `InfiniteTreeSkeleton` from an `InfiniteList` of `InfiniteTreeSkeleton`s and a new root element. -/
 def node (root : α) (childTrees : InfiniteList (InfiniteTreeSkeleton α)) : InfiniteTreeSkeleton α
 | .nil => root
-| .cons hd tl => childTrees hd tl
+| .cons hd tl => (childTrees.get hd).get tl
 
 instance : Membership α (InfiniteTreeSkeleton α) where
   mem t a := ∃ ns, t.get ns = a
 
 /-- Two `InfiniteTreeSkeleton`s are the same if they agree on all addresses. -/
-theorem ext {t1 t2 : InfiniteTreeSkeleton α} : (∀ ns, t1.get ns = t2.get ns) -> t1 = t2 := by
-  apply funext
+@[ext, grind ext]
+theorem ext {t1 t2 : InfiniteTreeSkeleton α} : (∀ ns, t1.get ns = t2.get ns) -> t1 = t2 := by apply funext
 
-theorem ext_iff {t1 t2 : InfiniteTreeSkeleton α} : t1 = t2 ↔ (∀ ns, t1.get ns = t2.get ns) := by
-  constructor
-  . intro h _; rw [h]
-  . exact ext
+/-- Unfold get to get the value of the underlying function at address ns. -/
+theorem compute_get {t : InfiniteTreeSkeleton α} {ns : List Nat} : t.get ns = t ns := by rfl
 
 /-- Each element we can get is in the tree. -/
+@[grind <-]
 theorem get_mem {t : InfiniteTreeSkeleton α} {ns : List Nat} : t.get ns ∈ t := by exists ns
 
 /-- Get after drop can be rewritten into get. -/
+@[simp, grind =]
 theorem get_drop {t : InfiniteTreeSkeleton α} {ns ns' : List Nat} : (t.drop ns).get ns' = t.get (ns ++ ns') := by rfl
 
 /-- Helper theorem stating the definition of drop. -/
-theorem drop_eq {t : InfiniteTreeSkeleton α} {ns : List Nat} : t.drop ns = fun ns' => t.get (ns ++ ns') := rfl
+theorem drop_eq {t : InfiniteTreeSkeleton α} {ns : List Nat} : t.drop ns = fun ns' => t.get (ns ++ ns') := by rfl
 
 /-- Dropping the empty address changes nothing. -/
+@[simp, grind =]
 theorem drop_nil {t : InfiniteTreeSkeleton α} : t.drop [] = t := by rfl
 
 /-- Two calls to drop can be combined. -/
+@[simp, grind =]
 theorem drop_drop {t : InfiniteTreeSkeleton α} {ns ns' : List Nat} : (t.drop ns).drop ns' = t.drop (ns ++ ns') := by
   rw [drop_eq]; simp only [get_drop]; rw [drop_eq]; simp
 
+/-- The `root` is the element at []. This is the definition. -/
+theorem root_eq {t : InfiniteTreeSkeleton α} : t.root = t.get [] := by rfl
+
 /-- The root is in the tree. -/
+@[grind <-]
 theorem root_mem {t : InfiniteTreeSkeleton α} : t.root ∈ t := by exists []
 
 /-- The root of the dropped tree at address ns is exactly the element at address ns. -/
+@[simp, grind =]
 theorem root_drop {t : InfiniteTreeSkeleton α} {ns : List Nat} : (t.drop ns).root = t.get ns := by
   unfold root; rw [get_drop]; simp
 
 /-- Getting a child tree is the same as dropping the corresponding singleton address. -/
-theorem get_childTrees {t : InfiniteTreeSkeleton α} : ∀ n, (t.childTrees.get n) = t.drop [n] := by intros; rfl
+@[simp, grind =]
+theorem get_childTrees {t : InfiniteTreeSkeleton α} : ∀ n, (t.childTrees.get n) = t.drop [n] := by intros; rw [InfiniteList.compute_get]; rfl
 
 /-- Getting at an address in a child tree can be combined into a single get call. -/
-theorem get_get_childTrees {t : InfiniteTreeSkeleton α} : ∀ n ns, (t.childTrees.get n).get ns = t.get (n::ns) := by intros; rfl
+theorem get_get_childTrees {t : InfiniteTreeSkeleton α} : ∀ n ns, (t.childTrees.get n).get ns = t.get (n::ns) := by simp
 
 /-- Getting the element at address [] on `node` is the new root. -/
+@[simp, grind =]
 theorem get_node_nil {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : (node root childTrees).get [] = root := by rfl
 
 /-- Getting any address != [] on `node` yields the respective element from the previous `InfiniteTreeSkeleton`. -/
-theorem get_node_cons {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : ∀ n ns, (node root childTrees).get (n :: ns) = (childTrees.get n).get ns := by intro n ns; rfl
+@[simp, grind =]
+theorem get_node_cons {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} :
+  ∀ n ns, (node root childTrees).get (n :: ns) = (childTrees.get n).get ns := by intro n ns; rfl
 
 /-- Dropping from `node` with an address of the form `n::ns` is the same as getting the `n` child from the child trees used in the construction and then dropping `ns` there.  -/
+@[simp, grind =]
 theorem drop_node_cons {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} {n : Nat} {ns : List Nat} :
   (node root childTrees).drop (n::ns) = (childTrees.get n).drop ns := by rfl
 
 /-- The `root` of `node` is the root used in the construction. -/
+@[simp, grind =]
 theorem root_node {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : (node root childTrees).root = root := by rfl
 
 /-- The `childTrees` of `node` are the childTrees used in the construction. -/
-theorem childTrees_node {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : (node root childTrees).childTrees = childTrees := by rfl
+@[simp, grind =]
+theorem childTrees_node {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} : (node root childTrees).childTrees = childTrees := by grind
 
 /-- Any `InfiniteTreeSkeleton` can be written using the `node` constructor. -/
-theorem node_root_childTrees (t : InfiniteTreeSkeleton α) : t = node t.root t.childTrees := by apply ext; intro ns; cases ns; rw [get_node_nil]; rfl; rw [get_node_cons]; rfl
+theorem node_root_childTrees (t : InfiniteTreeSkeleton α) : t = node t.root t.childTrees := by
+  ext ns; cases ns; rw [get_node_nil]; rfl; rw [get_node_cons, get_get_childTrees]
 
 end Basic
 
@@ -123,12 +143,15 @@ This is equivalent to and actually just defined via mapping each child tree to i
 -/
 
 /-- The `childNodes` are the roots of the `childTrees`. -/
+@[expose]
 def childNodes (t : InfiniteTreeSkeleton α) : InfiniteList α := t.childTrees.map root
 
 /-- When getting the nth child node, we can instead get the tree element at the singleton address `[n]`. -/
-theorem get_childNodes {t : InfiniteTreeSkeleton α} {n : Nat} : t.childNodes.get n = t.get [n] := by rfl
+@[simp, grind =]
+theorem get_childNodes {t : InfiniteTreeSkeleton α} {n : Nat} : t.childNodes.get n = t.get [n] := by simp [childNodes]
 
 /-- Each child node is a tree member. -/
+@[grind ->]
 theorem mem_of_mem_childNodes {t : InfiniteTreeSkeleton α} : ∀ c ∈ t.childNodes, c ∈ t := by
   rintro c ⟨n, c_mem⟩
   rw [get_childNodes] at c_mem
@@ -154,31 +177,35 @@ They might be totally "disconnected".
 def IsSuffix (t1 t2 : InfiniteTreeSkeleton α) : Prop := ∃ ns, t2.drop ns = t1
 infixl:50 " <:+ " => IsSuffix
 
+/-- t1 is a suffix of t2 if t1 can be obtained from t2 by dropping some elements. This is exactly the definition. -/
+theorem IsSuffix_iff {t1 t2 : InfiniteTreeSkeleton α} : t1 <:+ t2 ↔ ∃ ns, t2.drop ns = t1 := by rfl
+
 /-- The suffix relation is reflexive. -/
+@[grind <-]
 theorem IsSuffix_refl {t : InfiniteTreeSkeleton α} : t <:+ t := by exists []
 
 /-- The suffix relation is transitive. -/
+@[grind ->]
 theorem IsSuffix_trans {t1 t2 t3 : InfiniteTreeSkeleton α} : t1 <:+ t2 -> t2 <:+ t3 -> t1 <:+ t3 := by
   rintro ⟨ns1, h1⟩ ⟨ns2, h2⟩
   exists (ns2 ++ ns1)
-  rw [← h1, ← h2]
-  apply ext
-  intro n
-  simp only [get_drop, ← List.append_assoc]
+  grind
 
 /-- A member of a subtree is also a member of the current tree. -/
+@[grind ->]
 theorem mem_of_mem_suffix {t1 t2 : InfiniteTreeSkeleton α} (suffix : t1 <:+ t2) : ∀ e ∈ t1, e ∈ t2 := by
   rintro e ⟨ns, e_eq⟩
   rcases suffix with ⟨ms, suffix⟩
   exists ms ++ ns
-  rw [← suffix, get_drop] at e_eq
-  exact e_eq
+  grind
 
 /-- Dropping elements yields a subtree. -/
+@[grind <-]
 theorem IsSuffix_drop {t : InfiniteTreeSkeleton α} : ∀ ns, t.drop ns <:+ t := by intro ns; exists ns
 
 /-- Each child tree is a subtree. -/
-theorem IsSuffix_of_mem_childTrees {t : InfiniteTreeSkeleton α} : ∀ c ∈ t.childTrees, c <:+ t := by rintro c ⟨n, c_mem⟩; exists [n]
+@[grind ->]
+theorem IsSuffix_of_mem_childTrees {t : InfiniteTreeSkeleton α} : ∀ c ∈ t.childTrees, c <:+ t := by rintro c ⟨n, c_mem⟩; exists [n]; grind
 
 end Suffixes
 
@@ -193,6 +220,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
+@[expose]
 def Element (t : InfiniteTreeSkeleton α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
@@ -214,7 +242,7 @@ theorem mem_rec
     apply step
     . simp only [root_drop]
       apply ih _ tl.reverse rfl <;> simp
-    . exists hd
+    . exists hd; simp
 
 end ElementRecursor
 
@@ -234,13 +262,20 @@ def branchForAddress (t : InfiniteTreeSkeleton α) (ns : InfiniteList Nat) : Inf
 def branches (t : InfiniteTreeSkeleton α) : Set (InfiniteList α) := fun b => ∃ ns, b = t.branchForAddress ns
 
 /-- Getting from the branch corresponding to an infinite address corresponds to getting from the tree at the corresponding finite part of the address. This essentially unfold the definition of `branchForAddress`. -/
-theorem get_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get n = t.get (ns.take n) := by rfl
+@[simp, grind =]
+theorem get_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get n = t.get (ns.take n) := by
+  rw [InfiniteList.compute_get]; rfl
 
 /-- The `InfiniteList.head` of `branchForAddress` is the tree's `root`. -/
-theorem head_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} : (t.branchForAddress ns).head = t.root := by rfl
+@[simp, grind =]
+theorem head_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} : (t.branchForAddress ns).head = t.root := by
+  simp [InfiniteList.head_eq, root_eq]
 
 /-- The `InfiniteList.tail` of `branchForAddress` corresponds to a branch in a child tree. -/
-theorem tail_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} : (t.branchForAddress ns).tail = (t.childTrees.get ns.head).branchForAddress ns.tail := by rfl
+@[simp]
+theorem tail_branchForAddress {t : InfiniteTreeSkeleton α} {ns : InfiniteList Nat} :
+    (t.branchForAddress ns).tail = (t.childTrees.get ns.head).branchForAddress ns.tail := by
+  ext; simp only [InfiniteList.get_tail, get_branchForAddress, get_get_childTrees, InfiniteList.take_succ]
 
 /-- The `branchForAddress` for an `InfiniteList.cons` address can be decomposed accordingly. -/
 theorem branchForAddress_cons {t : InfiniteTreeSkeleton α} {n : Nat} {ns : InfiniteList Nat} :
@@ -251,19 +286,16 @@ theorem branchForAddress_cons {t : InfiniteTreeSkeleton α} {n : Nat} {ns : Infi
 /-- The `branches` of a tree constructed through `node` are exactly the ones who's head is the root from the construction and who's tail occurs in the `branches` of one of the child trees. -/
 theorem branches_node {root : α} {childTrees : InfiniteList (InfiniteTreeSkeleton α)} :
     (node root childTrees).branches = fun b => b.head = root ∧ ∃ n, b.tail ∈ (childTrees.get n).branches := by
-  apply Set.ext
-  intro b
+  ext b
   constructor
   . rintro ⟨ns, h⟩
     constructor
-    . rw [h, head_branchForAddress, root_node]
-    . exists ns.head, ns.tail
-      rw [h, tail_branchForAddress, childTrees_node]
+    . simp [h]
+    . exists ns.head, ns.tail; simp [h]
   . rintro ⟨head_eq, n, ns, tail_eq⟩
     exists InfiniteList.cons n ns
-    rw [branchForAddress_cons, root_node, childTrees_node]
-    rw [InfiniteList.cons_head_tail b]
-    rw [head_eq, tail_eq]
+    rw [branchForAddress_cons, InfiniteList.cons_head_tail b]
+    simp [head_eq, tail_eq]
 
 end Branches
 
@@ -294,32 +326,32 @@ theorem generate_branch_mem_branches {start : β} {generator : β -> β} {mapper
   have : ∀ n, trees.get n = trees.head.drop (addresses.take n) := by
     intro n
     induction n with
-    | zero => simp [InfiniteList.take_zero, drop_nil, InfiniteList.head]
+    | zero => simp [InfiniteList.head_eq]
     | succ n ih =>
       rw [InfiniteList.take_succ', ← drop_drop, ← ih]
       simp only [trees, InfiniteList.get_succ_generate]
       have eq_child := Classical.choose_spec (next_is_child ((InfiniteList.iterate start generator).get n))
       rw [← eq_child]
       rw [get_childTrees]
-      rfl
+      simp [addresses, InfiniteList.get_generate]
   exists addresses
-  apply InfiniteList.ext
-  intro n
+  ext
   simp only [generate_branch]
   rw [InfiniteList.get_map, get_branchForAddress]
   rw [this, root_drop]
-  simp only [trees]
-  rw [InfiniteList.head_generate]
+  simp [trees]
 
 /-- The `InfiniteList.head` of `generate_branch` is the `root` of the first tree. -/
-theorem head_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).head = (mapper start).root := rfl
+@[simp, grind =]
+theorem head_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
+  (generate_branch start generator mapper).head = (mapper start).root := by simp [generate_branch]
 
 /-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
 theorem get_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
-  ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by intros; rfl
+  ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by simp [generate_branch]
 
 /-- The `InfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
-theorem tail_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).tail = generate_branch (generator start) generator mapper := by unfold generate_branch; rw [InfiniteList.tail_map, InfiniteList.tail_generate]
+theorem tail_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).tail = generate_branch (generator start) generator mapper := by simp [generate_branch, InfiniteList.tail_generate]
 
 end Generate
 

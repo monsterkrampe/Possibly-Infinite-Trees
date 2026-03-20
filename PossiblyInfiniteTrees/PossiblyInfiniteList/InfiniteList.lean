@@ -1,3 +1,5 @@
+module
+
 /-!
 # InfiniteList
 
@@ -13,7 +15,10 @@ Also, there is `mem_rec` as a recursor over list elements to allow showing prope
 Furthermore, we offer a `generate` function that can build an infinite list from a function that builds a new element from a previous one.
 -/
 
+public section
+
 /-- An `InfiniteList` is defined as a function from the naturals into the desired type. -/
+@[expose]
 def InfiniteList (α : Type u) := Nat -> α
 
 namespace InfiniteList
@@ -46,54 +51,69 @@ def cons (hd : α) (tl : InfiniteList α) : InfiniteList α
 instance : Membership α (InfiniteList α) where
   mem l a := ∃ n, l.get n = a
 
-/-- Two infinite lists are the same of they are the same on all indices. -/
-theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by
-  apply funext
+/-- An element is a member of the list iff it occurs at some index. This is the definition, -/
+theorem mem_iff {l : InfiniteList α} : ∀ {a}, a ∈ l ↔ ∃ n, l.get n = a := by rfl
 
-theorem ext_iff {l1 l2 : InfiniteList α} : l1 = l2 ↔ (∀ n, l1.get n = l2.get n) := by
-  constructor
-  . intro h _; rw [h]
-  . exact ext
+/-- Two infinite lists are the same of they are the same on all indices. -/
+@[ext, grind ext]
+theorem ext {l1 l2 : InfiniteList α} : (∀ n, l1.get n = l2.get n) -> l1 = l2 := by apply funext
+
+/-- Unfold get to get the value of the underlying function at position n. -/
+theorem compute_get {l : InfiniteList α} {n : Nat} : l.get n = l n := by rfl
 
 /-- Each element we can get is in the list. -/
+@[grind <-]
 theorem get_mem {l : InfiniteList α} {n : Nat} : l.get n ∈ l := by exists n
 
 /-- Get after drop can be rewritten into get. -/
+@[simp, grind =]
 theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n + i) := by rfl
 
 /-- Dropping zero elements changes nothing. -/
-theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by apply ext; intro n; rw [get_drop, Nat.zero_add]
+@[simp, grind =]
+theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by ext; rw [get_drop, Nat.zero_add]
+
+/-- The `head` is the 0-th element. This is the definition. -/
+theorem head_eq {l : InfiniteList α} : l.head = l.get 0 := by rfl
 
 /-- The `head` is in the list. -/
+@[grind <-]
 theorem head_mem {l : InfiniteList α} : l.head ∈ l := l.get_mem (n := 0)
 
 /-- Getting the head after dropping n equals getting n. -/
+@[simp, grind =]
 theorem head_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).head = l.get n := by intros; rfl
 
 /-- Helper theorem stating the definition of tail. -/
-theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := rfl
+theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := by rfl
 
 /-- Getting the nth element from the tail equals getting the successor of n from the original list. -/
+@[simp, grind =]
 theorem get_tail {l : InfiniteList α} : ∀ n, l.tail.get n = l.get n.succ := by intros; rfl
 
 /-- Getting the tail after dropping n is the same as dropping n.succ. -/
+@[simp, grind =]
 theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
-  intros; unfold tail; apply ext; intro n; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
+  intros; unfold tail; ext; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
 
 /-- Getting the first element on cons is the new head. -/
+@[simp, grind =]
 theorem get_cons_zero {hd : α} {tl : InfiniteList α} : (cons hd tl).get 0 = hd := by rfl
 
 /-- Getting any index > 0 on cons yields the respective element from the previous infinite list. -/
+@[simp, grind =]
 theorem get_cons_succ {hd : α} {tl : InfiniteList α} : ∀ n, (cons hd tl).get n.succ = tl.get n := by intro n; rfl
 
 /-- The `head` of `cons` is the head used in the construction. -/
+@[simp, grind =]
 theorem head_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).head = hd := by rfl
 
 /-- The `tail` of `cons` is the list used in the construction. -/
+@[simp, grind =]
 theorem tail_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).tail = tl := by rfl
 
 /-- Any `InfiniteList` can be written using the `cons` constructor. -/
-theorem cons_head_tail (l : InfiniteList α) : l = cons l.head l.tail := by apply ext; intro n; cases n; rw [get_cons_zero]; rfl; rw [get_cons_succ]; rfl
+theorem cons_head_tail (l : InfiniteList α) : l = cons l.head l.tail := by ext n; cases n; rw [get_cons_zero]; rfl; rw [get_cons_succ]; rfl
 
 end Basic
 
@@ -112,17 +132,19 @@ The suffix relation is reflexive and transitive but not necesarrily antisymmetri
 def IsSuffix (l1 l2 : InfiniteList α) : Prop := ∃ n, l2.drop n = l1
 infixl:50 " <:+ " => IsSuffix
 
+/-- l1 is a suffix of l2 if l1 can be obtained from l2 by dropping some elements. This is exactly the definition. -/
+theorem IsSuffix_iff {l1 l2 : InfiniteList α} : l1 <:+ l2 ↔ ∃ n, l2.drop n = l1 := by rfl
+
 /-- The suffix relation is reflexive. -/
+@[grind <-]
 theorem IsSuffix_refl {l : InfiniteList α} : l <:+ l := by exists 0; exact l.drop_zero
 
 /-- The suffix relation is transitive. -/
+@[grind ->]
 theorem IsSuffix_trans {l1 l2 l3 : InfiniteList α} : l1 <:+ l2 -> l2 <:+ l3 -> l1 <:+ l3 := by
   rintro ⟨n1, h1⟩ ⟨n2, h2⟩
   exists (n2 + n1)
-  rw [← h1, ← h2]
-  apply ext
-  intro n
-  simp only [get_drop, ← Nat.add_assoc]
+  grind
 
 /-- Two suffixes of the same list must be suffixes of each other in some way. This is similar to List.suffix_or_suffix_of_suffix. -/
 theorem suffix_or_suffix_of_suffix {l1 l2 l3 : InfiniteList α} : l1 <:+ l3 -> l2 <:+ l3 -> (l1 <:+ l2) ∨ (l2 <:+ l1) := by
@@ -131,30 +153,27 @@ theorem suffix_or_suffix_of_suffix {l1 l2 l3 : InfiniteList α} : l1 <:+ l3 -> l
   | inl le =>
     apply Or.inl
     exists (n - n2)
-    apply ext
-    intro n3
-    rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
+    grind
   | inr le =>
-    have le := Nat.le_of_not_le le
     apply Or.inr
     exists (n2 - n)
-    apply ext
-    intro n3
-    rw [← eq2, ← eq, get_drop, get_drop, get_drop, ← Nat.add_assoc, Nat.add_sub_of_le le]
+    grind
 
 /-- A member of a suffix is also a member of the current list. -/
+@[grind ->]
 theorem mem_of_mem_suffix {l1 l2 : InfiniteList α} (suffix : l1 <:+ l2) : ∀ e ∈ l1, e ∈ l2 := by
   rintro e ⟨n, e_eq⟩
   rcases suffix with ⟨m, suffix⟩
   exists m + n
-  rw [← suffix, get_drop] at e_eq
-  exact e_eq
+  grind
 
 /-- Dropping elements yields a suffix. -/
+@[grind <-]
 theorem IsSuffix_drop {l : InfiniteList α} : ∀ n, l.drop n <:+ l := by intro n; exists n
 
 /-- The `tail` is a suffix. -/
-theorem IsSuffix_tail {l : InfiniteList α} : l.tail <:+ l := by exists 1; apply ext; intro n; rw [get_drop, get_tail, Nat.add_comm]
+@[grind <-]
+theorem IsSuffix_tail {l : InfiniteList α} : l.tail <:+ l := by exists 1; grind
 
 end Suffixes
 
@@ -169,6 +188,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A list `Element` is a Subtype featuring a proof of being a list member. -/
+@[expose]
 def Element (l : InfiniteList α) := { e : α // e ∈ l }
 
 /-- A recursor for proving properties about list members (`Element`s) via induction. -/
@@ -206,19 +226,43 @@ We allow to `map` over `InfiniteList` just like `List.map`.
 def map (l : InfiniteList α) (f : α -> β) : InfiniteList β := fun n => f (l.get n)
 
 /-- When getting after map, we can instead get and then apply the mapping function. -/
+@[simp, grind =]
 theorem get_map {l : InfiniteList α} {f : α -> β} {n : Nat} : (l.map f).get n = f (l.get n) := by rfl
 
 /-- An element `e` is in the mapped list if there was an element that maps to `e`. -/
+@[simp]
 theorem mem_map {l : InfiniteList α} {f : α -> β} : ∀ e, e ∈ (l.map f) ↔ ∃ e' ∈ l, f e' = e := by
   intro e
   constructor
-  . rintro ⟨i, e_mem⟩; rw [get_map] at e_mem; exists l.get i; exact ⟨get_mem, e_mem⟩
-  . rintro ⟨e', ⟨i, e'_mem⟩, e_eq⟩; rw [← e_eq]; exists i; rw [get_map]; rw [e'_mem]
+  . rintro ⟨i, _⟩; exists l.get i; grind
+  . rintro ⟨_, ⟨i, _⟩, _⟩; exists i; grind
+
+/-- The head of a mapped list is the same as applying the function to the head. -/
+@[simp, grind =]
+theorem head_map {l : InfiniteList α} {f : α -> β} : (l.map f).head = f l.head := by rfl
 
 /-- The tail of a mapped list is the same as applying map to the tail. -/
+@[simp, grind =]
 theorem tail_map {l : InfiniteList α} {f : α -> β} : (l.map f).tail = l.tail.map f := by rfl
 
 end Map
+
+section Attach
+
+/-!
+## Attach
+
+We allow to `attach` membership proofs to list elements just like `List.attach`.
+-/
+
+/-- Attaches a membership proof to each list element. -/
+def attach (l : InfiniteList α) : InfiniteList l.Element := fun n => ⟨l.get n, l.get_mem⟩
+
+/-- Calling `get` after `attach` returns the correct element with its membership proof. -/
+@[simp, grind =]
+theorem val_get_attach {l : InfiniteList α} : ∀ {n}, (l.attach.get n).val = l.get n := by intros; rfl
+
+end Attach
 
 section Generate
 
@@ -244,6 +288,7 @@ theorem get_succ_iterate' {start : α} {generator : α -> α} : ∀ n, (iterate 
   | succ n ih => simp only [get, iterate] at *; rw [ih]
 
 /-- When getting the sum of two numbers `n+m` from an interated list, we can instead generate the nth value, and use that as the starting value for another m iterations. -/
+@[simp]
 theorem get_add_iterate {start : α} {generator : α -> α} : ∀ n m, (iterate start generator).get (n + m) = (iterate ((iterate start generator).get n) generator).get m := by
   intro n m; induction m generalizing n with
   | zero => simp [get, iterate]
@@ -255,7 +300,8 @@ theorem get_add_iterate {start : α} {generator : α -> α} : ∀ n m, (iterate 
 def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
 
 /-- The head of a generated list is the mapped version of the starting value. -/
-theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).head = mapper start := rfl
+@[simp, grind =]
+theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).head = mapper start := by rfl
 
 /-- The nth element of a generated list is the mapped version of the nth element of the iterated "carrier" list. -/
 theorem get_generate {start : α} {generator : α -> α} {mapper : α -> β} :
@@ -268,14 +314,10 @@ theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β
 /-- The successor of the nth element of a generated list can be seen as taking the nth element after initializing the generation process with the generator function already applied once in the beginning. -/
 theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get n.succ = (generate (generator start) generator mapper).get n := by
-  intro n; simp only [generate, get_map, get_succ_iterate']
+  intros; simp [generate, get_succ_iterate']
 
 /-- The tail of a generated list is the list generated when applying the generator function once on the starting element before the actual generation. -/
-theorem tail_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).tail = generate (generator start) generator mapper := by
-  apply ext
-  intro n
-  rw [get_tail]
-  rw [get_succ_generate']
+theorem tail_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).tail = generate (generator start) generator mapper := by ext; simp [get_succ_generate']
 
 end Generate
 
@@ -292,6 +334,7 @@ def take (l : InfiniteList α) : Nat -> List α
 | .succ n => l.head :: (l.tail.take n)
 
 /-- The length of a taken list has exactly the desired number of elements. -/
+@[simp, grind =]
 theorem length_take {l : InfiniteList α} : ∀ {n}, (l.take n).length = n := by
   intro n
   induction n generalizing l with
@@ -299,6 +342,7 @@ theorem length_take {l : InfiniteList α} : ∀ {n}, (l.take n).length = n := by
   | succ n ih => simp [take, ih]
 
 /-- When taking zero, you get nil. -/
+@[simp, grind =]
 theorem take_zero {l : InfiniteList α} : l.take 0 = [] := by rfl
 
 /-- When taking the successor of a number n, you get the head following by taking n from the tail. -/
