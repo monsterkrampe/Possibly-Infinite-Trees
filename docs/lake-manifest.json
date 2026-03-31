@@ -62,7 +62,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "249e6699827c0eee191c7751646451ea1669a2dd",
+   "rev": "7305990316e33a9cd205b99b4490725a1ad39382",
    "name": "BasicLeanDatastructures",
    "manifestFile": "lake-manifest.json",
    "inputRev": "use-modules",

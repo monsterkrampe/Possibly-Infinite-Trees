@@ -640,8 +640,14 @@ The `leaves` of a `FiniteDegreeTree` is the set of elements that occur in a node
 The function is simply defined via `PossiblyInfiniteTree.leaves` for the underlying tree.
 -/
 
-@[expose]
 def leaves (t : FiniteDegreeTree α) : Set α := t.tree.leaves
+
+/-- Unfold the definition of leaves using `FiniteDegreeTree` vocabulary. -/
+theorem mem_leaves {t : FiniteDegreeTree α} : ∀ {l}, l ∈ t.leaves ↔ ∃ ns : List Nat, t.get? ns = some l ∧ (t.drop ns).childNodes = [] := by
+  intro l
+  unfold leaves PossiblyInfiniteTree.leaves get? childNodes drop
+  simp only [PossiblyInfiniteList.toList_of_finite_empty_iff, PossiblyInfiniteList.empty_iff_head_none]
+  constructor <;> (intro ⟨ns, eq, empty⟩; exists ns)
 
 end Leaves
 
