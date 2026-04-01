@@ -21,10 +21,8 @@ theorem branches_empty_of_root_none {t : FiniteDegreeTree α} :
     t.root = none -> t.branches = fun b => b = PossiblyInfiniteList.empty := by
   intro root_none
   rw [← FiniteDegreeTree.empty_iff_root_none] at root_none
-  unfold branches
-  unfold PossiblyInfiniteTree.branches
-  apply Set.ext
-  intro b
+  ext b
+  rw [mem_branches]
   constructor
   . rintro ⟨ns, b_eq, max⟩
     rw [b_eq, root_none]
@@ -33,9 +31,7 @@ theorem branches_empty_of_root_none {t : FiniteDegreeTree α} :
     exists fun _ => 0
     constructor
     . rw [root_none, b_eq]; simp
-    . rw [root_none]
-      intro _ _
-      simp
+    . rw [root_none, branchAddressIsMaximal_iff]; simp
 
 /-- By the above theorem, the set of `branches` is finite if the `root` is none. -/
 @[grind ->]
@@ -113,7 +109,8 @@ public theorem branches_finite_of_each_branch_finite (t : FiniteDegreeTree α) :
     let next := infinite_branch_generator t
     some ⟨next.val, next.property.right⟩
   ) (fun t => t.val)
-  have branch_mem : branch ∈ t.branches := by apply generate_branch_mem_branches <;> grind
+  have branch_mem : branch ∈ t.branches := by
+    show branch ∈ ((some start).get Option.isSome_some).val.val.branches; apply generate_branch_mem_branches <;> grind
 
   rcases all_finite branch branch_mem with ⟨n, eq_none⟩
 

@@ -512,9 +512,44 @@ and can be characterizes by an infinite "address", i.e. `InfiniteList Nat`.
 Here, we merely define them as the branches of the underlying `PossiblyInfiniteTree`.
 -/
 
+/-- This function defines the `PossiblyInfiniteList` of tree elements that corresponds to a given infinite address. -/
+def branchForAddress (t : FiniteDegreeTree α) (ns : InfiniteList Nat) : PossiblyInfiniteList α := t.tree.branchForAddress ns
+
+/-- Getting from the branch corresponding to an infinite address corresponds to getting from the tree at the corresponding finite part of the address. -/
+@[simp, grind =]
+theorem get?_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get? n = t.get? (ns.take n) :=
+  PossiblyInfiniteTree.get?_branchForAddress
+
+/-- The `PossiblyInfiniteList.head` of `branchForAddress` is the tree's `root`. -/
+@[simp, grind =]
+theorem head_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} : (t.branchForAddress ns).head = t.root :=
+  PossiblyInfiniteTree.head_branchForAddress
+
+/-- The `PossiblyInfiniteList.tail` of `branchForAddress` corresponds to a branch in a child tree. -/
+@[simp]
+theorem tail_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} :
+    (t.branchForAddress ns).tail = (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[ns.head]?).branchForAddress ns.tail := by
+  ext; simp [InfiniteList.take_succ]
+
+/-- The `branchForAddress` of the empty tree is the empty list. -/
+@[simp]
+theorem branchForAddress_empty {α} {ns : InfiniteList Nat} : (@FiniteDegreeTree.empty α).branchForAddress ns = PossiblyInfiniteList.empty :=
+  PossiblyInfiniteTree.branchForAddress_empty
+
+/-- We lift `PossiblyInfiniteTree.branchAddressIsMaximal` to `FiniteDegreeTree`. -/
+def branchAddressIsMaximal (t : FiniteDegreeTree α) (ns : InfiniteList Nat) : Prop := t.tree.branchAddressIsMaximal ns
+
+/-- Unfolds the definition of `branchAddressIsMaximal`. -/
+theorem branchAddressIsMaximal_iff {t : FiniteDegreeTree α} {ns : InfiniteList Nat} :
+    t.branchAddressIsMaximal ns ↔ ∀ n, (t.branchForAddress ns).get? n.succ = none -> (t.drop (ns.take n)).childNodes = [] := by
+  unfold branchAddressIsMaximal PossiblyInfiniteTree.branchAddressIsMaximal childNodes drop
+  simp [get?, PossiblyInfiniteList.toList_of_finite_empty_iff, PossiblyInfiniteList.empty_iff_head_none]
+
 /-- The `branches` in the `FiniteDegreeTree` are exactly the branches in the underlying `PossiblyInfiniteTree`. -/
-@[expose]
 def branches (t : FiniteDegreeTree α) : Set (PossiblyInfiniteList α) := t.tree.branches
+
+/-- Unfolds the `branches` definition mimicing to the underlying definition on the `PossiblyInfiniteTree`. -/
+theorem mem_branches {t : FiniteDegreeTree α} : ∀ {b}, b ∈ t.branches ↔ ∃ ns, b = t.branchForAddress ns ∧ t.branchAddressIsMaximal ns := by rfl
 
 /-- The set of `branches` can equivalently be expressed as the set of all `PossiblyInfiniteList`s where the head equals the root of the tree and the tail occurs in the branches of some childTree. If there are no childTrees, then the tail needs to be empty. -/
 theorem branches_eq {t : FiniteDegreeTree α} : t.branches = fun b =>
