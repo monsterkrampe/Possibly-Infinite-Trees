@@ -837,6 +837,72 @@ def from_branch (b : PossiblyInfiniteList α) : PossiblyInfiniteTree α where
     simp only [InfiniteTreeSkeleton.compute_get]
     grind
 
+/-- For the `from_branch` tree, getting an address of exactly n zeros is the branch value at index n. -/
+theorem get?_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).get? ns = b.get? ns.length := by
+  unfold from_branch get?; rw [InfiniteTreeSkeleton.compute_get]; grind
+
+/-- For the `from_branch` tree, getting an address wit a non-zero number always returns none. -/
+theorem get?_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).get? ns = none := by
+  unfold from_branch get?; rw [InfiniteTreeSkeleton.compute_get]; grind
+
+/-- For the `from_branch` tree, the root is the head of the branch. -/
+@[simp, grind =]
+theorem root_from_branch {b : PossiblyInfiniteList α} : (from_branch b).root = b.head := by
+  rw [root_eq, get?_from_branch_of_all_zero (by simp)]
+  rw [PossiblyInfiniteList.head_eq]
+  simp
+
+/-- For the `from_branch` tree, dropping an address of exactly n zeros is the branch with n values dropped. -/
+theorem drop_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).drop ns = from_branch (b.drop ns.length) := by
+  ext ns2
+  cases Decidable.em (ns2.all (fun e => e = 0)) with
+  | inl all_zero2 =>
+    rw [get?_drop, get?_from_branch_of_all_zero]
+    rw [get?_from_branch_of_all_zero]
+    . simp
+    . grind
+    . grind
+  | inr some_ne_zero2 =>
+    have : ∃ n ∈ ns2, n ≠ 0 := by grind
+    rw [get?_drop, get?_from_branch_of_some_ne_zero]
+    rw [get?_from_branch_of_some_ne_zero]
+    . exact this
+    . rcases this with ⟨n, mem, ne⟩; exists n; grind
+
+/-- For the `from_branch` tree, dropping an address wit a non-zero number always returns the empty tree. -/
+theorem drop_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).drop ns = PossiblyInfiniteTree.empty := by
+  rw [empty_iff_root_none, root_drop, get?_from_branch_of_some_ne_zero]
+  grind
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees.get? 0 = PossiblyInfiniteTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [get?_childTrees, drop_from_branch_of_all_zero]
+  . have aux : b.tail = (b.drop 0).tail := by simp
+    rw [aux, PossiblyInfiniteList.tail_drop]
+    simp
+  . simp
+
+/-- For the `from_branch` tree, getting a non-zero child tree always returns none. -/
+theorem get?_childTrees_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childTrees.get? n = none := by
+  intro ne_zero
+  rw [get?_childTrees, drop_from_branch_of_some_ne_zero]
+  . rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; simp
+  . simpa
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem head_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees.head = PossiblyInfiniteTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [PossiblyInfiniteList.head_eq]
+  exact get?_zero_childTrees_from_branch
+
 end FromBranch
 
 end PossiblyInfiniteTree
