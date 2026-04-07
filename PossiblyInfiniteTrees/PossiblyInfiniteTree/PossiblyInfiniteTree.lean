@@ -903,6 +903,27 @@ theorem head_childTrees_from_branch {b : PossiblyInfiniteList α} :
   rw [PossiblyInfiniteList.head_eq]
   exact get?_zero_childTrees_from_branch
 
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes.get? 0 = b.tail.head := by
+  rw [get?_childNodes, get?_zero_childTrees_from_branch]
+  simp
+
+/-- For the `from_branch` tree, getting a non-zero child node always returns none. -/
+theorem get?_childNodes_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childNodes.get? n = none := by
+  intro ne_zero
+  rw [get?_childNodes, get?_childTrees_from_branch_of_ne_zero ne_zero]
+  simp
+
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem head_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes.head = b.tail.head := by
+  rw [PossiblyInfiniteList.head_eq]
+  exact get?_zero_childNodes_from_branch
+
 end FromBranch
 
 end PossiblyInfiniteTree
