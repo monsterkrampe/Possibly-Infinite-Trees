@@ -277,6 +277,10 @@ def iterate (start : α) (generator : α -> α) : InfiniteList α
 | .zero => start
 | .succ n => generator (iterate start generator n)
 
+/-- The head of an iterated list is the starting value. -/
+@[simp, grind =]
+theorem head_iterate {start : α} {generator : α -> α} : (iterate start generator).head = start := by rfl
+
 /-- When getting the successor of a number `n` from an interated list, we can instead get the nth element and apply the generator once mode. -/
 theorem get_succ_iterate {start : α} {generator : α -> α} :
   ∀ n, (iterate start generator).get n.succ = generator ((iterate start generator).get n) := by intros; rfl
