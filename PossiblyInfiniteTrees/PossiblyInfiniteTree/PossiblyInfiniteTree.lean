@@ -1,4 +1,6 @@
-import PossiblyInfiniteTrees.PossiblyInfiniteTree.InfiniteTree
+module
+
+public import PossiblyInfiniteTrees.PossiblyInfiniteTree.InfiniteTree
 
 /-!
 # PossiblyInfiniteTree
@@ -9,6 +11,7 @@ The tree can still be infinite in both dimensions, i.e.
 it may have infinite depth and each node may have infinitely many (direct) children.
 -/
 
+public section
 
 /-- An `InfiniteTreeSkeleton` over `Option` has `no_orphans` if an element being `none` implies its `InfiniteTreeSkeleton.childNodes` also being `none`. That is, intuitively, every non-none node needs to have a non-none parent. This is a property that we want for possibly infinite trees but we need to be able to express it on the underlying infinite tree first. -/
 def InfiniteTreeSkeleton.no_orphans (t : InfiniteTreeSkeleton (Option α)) : Prop :=
@@ -43,6 +46,7 @@ The `childTrees` function is defined separately here since it is more involved t
 -/
 
 /-- Obtains the element of the tree at the given address. -/
+@[expose]
 def get? (t : PossiblyInfiniteTree α) (ns : List Nat) : Option α := t.infinite_tree.get ns
 
 /-- Obtains the subtree at the given address (by dropping everything else). -/
@@ -61,32 +65,36 @@ instance : Membership α (PossiblyInfiniteTree α) where
 theorem mem_iff {t : PossiblyInfiniteTree α} : ∀ {e}, e ∈ t ↔ ∃ ns, t.get? ns = some e := by rfl
 
 /-- Two `PossiblyInfiniteTree`s are the same if they agree on all addresses. -/
+@[ext, grind ext]
 theorem ext {t1 t2 : PossiblyInfiniteTree α} : (∀ ns, t1.get? ns = t2.get? ns) -> t1 = t2 := by
   intro h; rw [PossiblyInfiniteTree.mk.injEq]; apply InfiniteTreeSkeleton.ext; exact h
 
-theorem ext_iff {t1 t2 : PossiblyInfiniteTree α} : t1 = t2 ↔ (∀ ns, t1.get? ns = t2.get? ns) := by
-  constructor
-  . intro h _; rw [h]
-  . exact ext
-
 /-- Get after drop can be rewritten into get. -/
-theorem get?_drop {t : PossiblyInfiniteTree α} {ns ns' : List Nat} : (t.drop ns).get? ns' = t.get? (ns ++ ns') := by rfl
+@[simp, grind =]
+theorem get?_drop {t : PossiblyInfiniteTree α} {ns ns' : List Nat} :
+  (t.drop ns).get? ns' = t.get? (ns ++ ns') := InfiniteTreeSkeleton.get_drop
 
 /-- Dropping the empty address changes nothing. -/
-theorem drop_nil {t : PossiblyInfiniteTree α} : t.drop [] = t := by rfl
+@[simp, grind =]
+theorem drop_nil {t : PossiblyInfiniteTree α} : t.drop [] = t := by simp [drop]
 
 /-- Two calls to drop can be combined. -/
-theorem drop_drop {t : PossiblyInfiniteTree α} {ns ns' : List Nat} : (t.drop ns).drop ns' = t.drop (ns ++ ns') := by simp [drop, InfiniteTreeSkeleton.drop_drop]
+@[simp, grind =]
+theorem drop_drop {t : PossiblyInfiniteTree α} {ns ns' : List Nat} :
+  (t.drop ns).drop ns' = t.drop (ns ++ ns') := by simp [drop]
 
 /-- The `root` is equal to getting the empty address. -/
-theorem root_eq {t : PossiblyInfiniteTree α} : t.root = t.get? [] := by rfl
+theorem root_eq {t : PossiblyInfiniteTree α} : t.root = t.get? [] := InfiniteTreeSkeleton.root_eq
 
 /-- The root is in the tree. -/
-theorem root_mem {t : PossiblyInfiniteTree α} : ∀ r ∈ t.root, r ∈ t := by intro h h_mem; rw [Option.mem_def] at h_mem; simp only [Membership.mem, ← h_mem]; exact t.infinite_tree.root_mem
+@[grind ->]
+theorem root_mem {t : PossiblyInfiniteTree α} : ∀ r ∈ t.root, r ∈ t := by
+  intro h h_mem; rw [Option.mem_def] at h_mem; simp only [Membership.mem, ← h_mem]; exact t.infinite_tree.root_mem
 
 /-- The root of the dropped tree at address ns is exactly the element at address ns. -/
-theorem root_drop {t : PossiblyInfiniteTree α} {ns : List Nat} : (t.drop ns).root = t.get? ns := by
-  unfold root drop; simp [InfiniteTreeSkeleton.root_drop]; rfl
+@[simp, grind =]
+theorem root_drop {t : PossiblyInfiniteTree α} {ns : List Nat} :
+  (t.drop ns).root = t.get? ns := InfiniteTreeSkeleton.root_drop
 
 end Basic
 
@@ -101,26 +109,40 @@ The `empty` `PossiblyInfiniteTree` is simply the `PossiblyInfiniteTree` that is 
 /-- The empty `PossiblyInfiniteTree` is none everywhere. -/
 def empty : PossiblyInfiniteTree α where
   infinite_tree := fun _ => none
-  no_orphans := by rintro _ ⟨_, eq⟩ _ _ ⟨_, eq2⟩; rw [← eq2, ← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
-  no_holes_in_children := by rintro _ ⟨_, eq⟩ _ _; rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]; simp [InfiniteTreeSkeleton.get]
+  no_orphans := by
+    intro _ suf _ _ mem
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨_, eq⟩
+    rw [InfiniteList.mem_iff] at mem; rcases mem with ⟨_, eq2⟩
+    rw [← eq2, ← eq]
+    rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
+    simp [InfiniteTreeSkeleton.compute_get]
+  no_holes_in_children := by
+    intro _ suf _ _
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨_, eq⟩
+    rw [← eq]
+    rw [InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
+    simp [InfiniteTreeSkeleton.compute_get]
 
 /-- Getting from the `empty` tree always returns none. -/
-theorem get?_empty {α} : ∀ {n}, (@PossiblyInfiniteTree.empty α).get? n = none := by intro _; rfl
+@[simp, grind =]
+theorem get?_empty {α} : ∀ {n}, (@PossiblyInfiniteTree.empty α).get? n = none := by
+  intro _; unfold get?; rw [InfiniteTreeSkeleton.compute_get]; rfl
 
 /-- Dropping from the `empty` tree again yields the empty tree. -/
+@[simp, grind =]
 theorem drop_empty {α} : ∀ {ns}, (@PossiblyInfiniteTree.empty α).drop ns = PossiblyInfiniteTree.empty := by
-  intro _; apply ext; intro _; rw [get?_drop, get?_empty, get?_empty]
+  intro _; ext; simp
 
 /-- The `root` of the `empty` tree is none. -/
-theorem root_empty {α} : (@PossiblyInfiniteTree.empty α).root = none := by rfl
+@[simp, grind =]
+theorem root_empty {α} : (@PossiblyInfiniteTree.empty α).root = none := by simp [root_eq]
 
 /-- A tree is `empty` if and only if the `root` is none. -/
 theorem empty_iff_root_none {t : PossiblyInfiniteTree α} : t = PossiblyInfiniteTree.empty ↔ t.root = none := by
   constructor
   . intro h; rw [h]; exact root_empty
   intro h
-  rw [root_eq] at h
-  apply PossiblyInfiniteTree.ext
+  apply ext
   intro ns
   rw [get?_empty]
   apply InfiniteTreeSkeleton.no_orphans_closure t.no_orphans _ InfiniteTreeSkeleton.IsSuffix_refl h
@@ -159,38 +181,31 @@ def tree_to_opt (t : PossiblyInfiniteTree α) : Option (PossiblyInfiniteTreeWith
   | .none => none
   | .some r => some ⟨t, by simp [eq]⟩
 
-theorem opt_to_tree_none_iff {opt : Option (PossiblyInfiniteTreeWithRoot α)} : opt = none ↔ (opt_to_tree opt).root = none := by
-  unfold opt_to_tree
-  cases opt with
-  | none => simp [root_empty]
-  | some t => simp [t.property]
+@[simp, grind =]
+theorem opt_to_tree_none {α} : opt_to_tree none = @PossiblyInfiniteTree.empty α := by rfl
 
-theorem tree_to_opt_none_iff {t : PossiblyInfiniteTree α} : tree_to_opt t = none ↔ t.root = none := by
-  unfold tree_to_opt
-  split; simpa; simp [*]
+@[simp, grind =]
+theorem opt_to_tree_some {t : PossiblyInfiniteTreeWithRoot α} : opt_to_tree (some t) = t.val := by rfl
 
-theorem tree_to_opt_some_iff {t : PossiblyInfiniteTree α} : ∀ {t'}, tree_to_opt t = some t' ↔ t = t' ∧ t.root.isSome := by
-  unfold tree_to_opt
-  split
-  case h_1 eq => simp [eq]
-  case h_2 eq => simp [eq]
+theorem opt_to_tree_none_iff {opt : Option (PossiblyInfiniteTreeWithRoot α)} :
+  opt = none ↔ (opt_to_tree opt).root = none := by fun_cases opt_to_tree opt <;> grind
 
+theorem tree_to_opt_none_iff {t : PossiblyInfiniteTree α} :
+  tree_to_opt t = none ↔ t.root = none := by fun_cases tree_to_opt t <;> grind
+
+theorem tree_to_opt_some_iff {t : PossiblyInfiniteTree α} :
+  ∀ {t'}, tree_to_opt t = some t' ↔ t = t' ∧ t.root.isSome := by fun_cases tree_to_opt t <;> grind
+
+@[simp, grind =]
 theorem tree_to_opt_after_opt_to_tree {opt : Option (PossiblyInfiniteTreeWithRoot α)} :
     tree_to_opt (opt_to_tree opt) = opt := by
   cases eq : opt with
   | none => rw [tree_to_opt_none_iff, ← opt_to_tree_none_iff]
-  | some t =>
-    simp only [opt_to_tree, tree_to_opt]
-    split
-    . have := t.property; contradiction
-    . rfl
+  | some t => simp [opt_to_tree, tree_to_opt_some_iff, Option.isSome_iff_ne_none, t.property]
 
+@[simp, grind =]
 theorem opt_to_tree_after_tree_to_opt {t : PossiblyInfiniteTree α} :
-    opt_to_tree (tree_to_opt t) = t := by
-  unfold tree_to_opt
-  split
-  . simp only [opt_to_tree]; apply Eq.symm; rw [empty_iff_root_none]; assumption
-  . simp only [opt_to_tree]
+  opt_to_tree (tree_to_opt t) = t := by fun_cases tree_to_opt t <;> grind [opt_to_tree, empty_iff_root_none]
 
 end PossiblyInfiniteTreeWithRoot
 
@@ -202,24 +217,33 @@ With `PossiblyInfiniteTreeWithRoot` in place, we can now define the actual `chil
 
 /-- The `childTrees` of a `PossiblyInfiniteTree` are the `PossiblyInfiniteList` of all child trees that are not empty, i.e. it only consists of `PossiblyInfiniteTreeWithRoot`. -/
 def childTrees (t : PossiblyInfiniteTree α) : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α) where
-  infinite_list := fun n => PossiblyInfiniteTreeWithRoot.tree_to_opt {
-    infinite_tree := t.infinite_tree.childTrees.get n
-    no_orphans := by intro _ suf; apply t.no_orphans; apply InfiniteTreeSkeleton.IsSuffix_trans suf; apply InfiniteTreeSkeleton.IsSuffix_of_mem_childTrees; apply InfiniteList.get_mem
-    no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_of_mem_childTrees _ InfiniteList.get_mem)
-  }
-  no_holes := by intro n'; simp only [InfiniteList.get]; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; exact t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl n'
+  infinite_list := t.infinite_tree.childTrees.attach.map (fun c =>
+    PossiblyInfiniteTreeWithRoot.tree_to_opt {
+      infinite_tree := c.val
+      no_orphans := by intro _ suf; apply t.no_orphans; apply InfiniteTreeSkeleton.IsSuffix_trans suf; apply InfiniteTreeSkeleton.IsSuffix_of_mem_childTrees; exact c.property
+      no_holes_in_children := by intro _ suf; apply t.no_holes_in_children; exact InfiniteTreeSkeleton.IsSuffix_trans suf (t.infinite_tree.IsSuffix_of_mem_childTrees _ c.property)
+    }
+  )
+  no_holes := by
+    intro n'
+    simp only [InfiniteList.get_map, InfiniteList.val_get_attach, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff, root, InfiniteTreeSkeleton.root_eq, InfiniteTreeSkeleton.get_get_childTrees]
+    have := t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl n'
+    simp only [InfiniteTreeSkeleton.get_childNodes] at this
+    exact this
 
 /-- `PossiblyInfiniteTree.childTrees` can be expressed through `InfiniteTreeSkeleton.childTrees`. -/
 theorem mem_childTrees_iff {t : PossiblyInfiniteTree α} : ∀ c, c ∈ t.childTrees ↔ c.val.infinite_tree ∈ t.infinite_tree.childTrees := by
-  intro c; unfold childTrees
-  simp only [PossiblyInfiniteList.mem_iff, PossiblyInfiniteList.get?, InfiniteList.get, PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff]
+  intro c
+  unfold childTrees
+  simp only [PossiblyInfiniteList.mem_iff]
+  simp [PossiblyInfiniteList.get?, PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff]
   constructor
   . rintro ⟨n, mem⟩
     exists n
     rw [← mem.left]
-    rfl
+    simp
   . rintro ⟨n, mem⟩
-    simp only [InfiniteList.get] at mem
+    simp only [InfiniteTreeSkeleton.get_childTrees] at mem
     exists n
     constructor
     . rw [PossiblyInfiniteTree.mk.injEq]; exact mem
@@ -228,13 +252,19 @@ theorem mem_childTrees_iff {t : PossiblyInfiniteTree α} : ∀ c, c ∈ t.childT
       exact c.property
 
 /-- Getting a child tree is the same as dropping the corresponding singleton address. -/
-theorem get?_childTrees {t : PossiblyInfiniteTree α} : ∀ n, (t.childTrees.get? n) = PossiblyInfiniteTreeWithRoot.tree_to_opt (t.drop [n]) := by intros; rfl
+@[simp, grind =]
+theorem get?_childTrees {t : PossiblyInfiniteTree α} : ∀ n, (t.childTrees.get? n) = PossiblyInfiniteTreeWithRoot.tree_to_opt (t.drop [n]) := by
+  intros; simp [childTrees, PossiblyInfiniteList.get?, drop]
 
 /-- Getting at an address in a child tree can be combined into a single get call. -/
-theorem get?_get?_childTrees {t : PossiblyInfiniteTree α} : ∀ n ns, (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).get? ns = t.get? (n::ns) := by intros; rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]; rfl
+theorem get?_get?_childTrees {t : PossiblyInfiniteTree α} :
+    ∀ n ns, (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).get? ns = t.get? (n::ns) := by
+  intros; simp
 
 /-- The `childTrees` of the `empty` tree are exactly `PossiblyInfiniteList.empty`. -/
-theorem childTrees_empty {α} : (@PossiblyInfiniteTree.empty α).childTrees = PossiblyInfiniteList.empty := by rfl
+@[simp, grind =]
+theorem childTrees_empty {α} : (@PossiblyInfiniteTree.empty α).childTrees = PossiblyInfiniteList.empty := by
+  rw [PossiblyInfiniteList.empty_iff_head_none, PossiblyInfiniteList.head_eq]; simp [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]
 
 end ChildTrees
 
@@ -250,41 +280,51 @@ Similar to the `InfiniteTreeSkeleton`, we can also define a `node` constructor o
 def node (root : α) (childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)) : PossiblyInfiniteTree α where
   infinite_tree := InfiniteTreeSkeleton.node (.some root) (childTrees.infinite_list.map (PossiblyInfiniteTree.infinite_tree ∘ PossiblyInfiniteTreeWithRoot.opt_to_tree))
   no_orphans := by
-    intro _ ⟨ns, eq⟩
+    intro _ suf
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨ns, eq⟩
     cases ns with
     | nil => rintro contra _ ⟨_, eq2⟩; rw [← eq, InfiniteTreeSkeleton.drop_nil, InfiniteTreeSkeleton.root_node] at contra; simp at contra
     | cons n ns =>
       rw [InfiniteTreeSkeleton.drop_node_cons] at eq
       rw [← eq]
       apply (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_orphans
-      exists ns
+      grind
   no_holes_in_children := by
-    rintro _ ⟨ns, eq⟩
+    intro _ suf
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨ns, eq⟩
     cases ns with
-    | nil => rw [← eq, InfiniteTreeSkeleton.drop_nil]; unfold InfiniteTreeSkeleton.childNodes; rw [InfiniteTreeSkeleton.childTrees_node]; intro n; simp only [InfiniteList.get_map, Function.comp_apply]; rw [← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact childTrees.no_holes n
+    | nil =>
+      rw [← eq, InfiniteTreeSkeleton.drop_nil]
+      intro n
+      simp only [InfiniteTreeSkeleton.childNodes]
+      simp only [InfiniteTreeSkeleton.childTrees_node, InfiniteList.get_map, Function.comp_apply]
+      rw [← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTree.root.eq_def, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
+      exact childTrees.no_holes n
     | cons n ns =>
       rw [← eq, InfiniteTreeSkeleton.drop_node_cons, InfiniteList.get_map]
-      exact (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_holes_in_children _ (by exists ns)
+      exact (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.infinite_list.get n)).no_holes_in_children _ (by grind)
 
 /-- Getting the element at address [] on `node` is the new root. -/
-theorem get?_node_nil {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by rfl
+@[simp, grind =]
+theorem get?_node_nil {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by simp [node, get?]
 
 /-- Getting any address != [] on `node` yields the respective element from the previous `PossiblyInfiniteTreeWithRoot`. -/
-theorem get?_node_cons {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : ∀ n ns, (node root childTrees).get? (n :: ns) = (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.get? n)).get? ns := by intro n ns; rfl
+theorem get?_node_cons {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : ∀ n ns, (node root childTrees).get? (n :: ns) = (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.get? n)).get? ns := by intro n ns; simp only [node, get?, InfiniteTreeSkeleton.get_node_cons, InfiniteList.get_map, Function.comp_apply]; rfl
 
 /-- Dropping from `node` with an address of the form `n::ns` is the same as getting the `n` child from the child trees used in the construction and then dropping `ns` there.  -/
-theorem drop_node_cons {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} {n : Nat} {ns : List Nat} : (node root childTrees).drop (n::ns) = (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.get? n)).drop ns := by rfl
+theorem drop_node_cons {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} {n : Nat} {ns : List Nat} : (node root childTrees).drop (n::ns) = (PossiblyInfiniteTreeWithRoot.opt_to_tree (childTrees.get? n)).drop ns := by simp only [drop, node, InfiniteTreeSkeleton.drop_node_cons, InfiniteList.get_map, Function.comp_apply]; rfl
 
 /-- The `root` of `node` is the root used in the construction. -/
-theorem root_node {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).root = root := by rfl
+@[simp, grind =]
+theorem root_node {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).root = root := InfiniteTreeSkeleton.root_node
 
 /-- The `childTrees` of `node` are the childTrees used in the construction. -/
-theorem childTrees_node {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} : (node root childTrees).childTrees = childTrees := by
+@[simp, grind =]
+theorem childTrees_node {root : α} {childTrees : PossiblyInfiniteList (PossiblyInfiniteTreeWithRoot α)} :
+    (node root childTrees).childTrees = childTrees := by
   unfold node PossiblyInfiniteTree.childTrees
-  simp only [InfiniteTreeSkeleton.childTrees_node, InfiniteList.get_map, Function.comp_apply]
-  apply PossiblyInfiniteList.ext
-  intro n
-  simp only [PossiblyInfiniteList.get?, InfiniteList.get]
+  ext
+  simp only [PossiblyInfiniteList.get?, InfiniteList.get_map, InfiniteList.val_get_attach, InfiniteTreeSkeleton.childTrees_node, Function.comp_apply]
   rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_after_opt_to_tree]
 
 /-- Any `PossiblyInfiniteTree` where the `root` is not none can be written using the `node` constructor. -/
@@ -292,11 +332,7 @@ theorem node_root_childTrees {t : PossiblyInfiniteTree α} {root : α} (h : t.ro
   rw [PossiblyInfiniteTree.mk.injEq]; simp only [node]; rw [← h]; rw [InfiniteTreeSkeleton.node_root_childTrees t.infinite_tree]
   apply congrArg
   unfold PossiblyInfiniteTree.childTrees
-  apply InfiniteList.ext
-  intro n
-  simp only [InfiniteList.get_map, Function.comp_apply]
-  simp only [InfiniteList.get]
-  rw [PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]
+  ext; simp
 
 end Node
 
@@ -315,8 +351,9 @@ def childNodes (t : PossiblyInfiniteTree α) : PossiblyInfiniteList α where
   no_holes := t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl
 
 /-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
-theorem get?_childNodes {t : PossiblyInfiniteTree α} : ∀ {n}, t.childNodes.get? n = (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).root := by
-  intro n; rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]; rfl
+theorem get?_childNodes {t : PossiblyInfiniteTree α} :
+    ∀ {n}, t.childNodes.get? n = (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).root := by
+  intro n; rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]; simp [get?, PossiblyInfiniteList.get?, childNodes]
 
 /-- The `childNodes` are the `root`s of the `childTrees`. -/
 theorem childNodes_eq {t : PossiblyInfiniteTree α} : t.childNodes = t.childTrees.map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
@@ -330,12 +367,14 @@ theorem childNodes_eq {t : PossiblyInfiniteTree α} : t.childNodes = t.childTree
   | some r => rw [Option.map_eq_some_iff]; exists ⟨t.drop [n], by simp [eq]⟩; rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff]; simp [eq]
 
 /-- Each child node is a tree member. -/
+@[grind ->]
 theorem mem_of_mem_childNodes {t : PossiblyInfiniteTree α} : ∀ c ∈ t.childNodes, c ∈ t := by
   intro c; exact t.infinite_tree.mem_of_mem_childNodes (some c)
 
 /-- The `childNodes` of the `empty` tree are `PossiblyInfiniteList.empty`. -/
+@[simp, grind =]
 theorem childNodes_empty {α} : (@PossiblyInfiniteTree.empty α).childNodes = PossiblyInfiniteList.empty := by
-  apply PossiblyInfiniteList.ext; intro _; rw [get?_childNodes, childTrees_empty, PossiblyInfiniteList.get?_empty, PossiblyInfiniteList.get?_empty, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
+  rw [childNodes_eq]; simp
 
 end ChildNodes
 
@@ -359,37 +398,46 @@ infixl:50 " <:+ " => IsSuffix
 
 /-- t1 is a subtree of t2 if t1 can be obtained from t2 by dropping. -/
 theorem IsSuffix_iff {t1 t2 : PossiblyInfiniteTree α} : t1 <:+ t2 ↔ ∃ ns, t2.drop ns = t1 := by
+  unfold IsSuffix; rw [InfiniteTreeSkeleton.IsSuffix_iff]
   constructor
   . rintro ⟨ns, h⟩; exists ns; simp [drop, h]
   . rintro ⟨ns, h⟩; exists ns; simp only [drop] at h; rw [← h]
 
 /-- The suffix relation is reflexive. -/
+@[grind <-]
 theorem IsSuffix_refl {t : PossiblyInfiniteTree α} : t <:+ t := t.infinite_tree.IsSuffix_refl
 
 /-- The suffix relation is transitive. -/
+@[grind ->]
 theorem IsSuffix_trans {t1 t2 t3 : PossiblyInfiniteTree α} : t1 <:+ t2 -> t2 <:+ t3 -> t1 <:+ t3 := InfiniteTreeSkeleton.IsSuffix_trans
 
 /-- A member of a subtree is also a member of the current tree. -/
+@[grind ->]
 theorem mem_of_mem_suffix {t1 t2 : PossiblyInfiniteTree α} (suffix : t1 <:+ t2) : ∀ e ∈ t1, e ∈ t2 := by
   intro e mem; apply InfiniteTreeSkeleton.mem_of_mem_suffix suffix; exact mem
 
 /-- Dropping elements yields a subtree. -/
+@[grind <-]
 theorem IsSuffix_drop {t : PossiblyInfiniteTree α} : ∀ ns, t.drop ns <:+ t := t.infinite_tree.IsSuffix_drop
 
 /-- Each child tree is a subtree. -/
+@[grind ->]
 theorem IsSuffix_of_mem_childTrees {t : PossiblyInfiniteTree α} : ∀ c ∈ t.childTrees, c <:+ t := by
   intro c c_mem; apply t.infinite_tree.IsSuffix_of_mem_childTrees; rw [mem_childTrees_iff] at c_mem; exact c_mem
 
 /-- Every suffix of the empty tree is empty. -/
-theorem empty_suffix_of_empty {t : PossiblyInfiniteTree α} : t <:+ empty -> t = empty := by
-  intro suf; rw [IsSuffix_iff] at suf; rcases suf with ⟨_, suf⟩; rw [← suf]; exact drop_empty
+@[grind ->]
+theorem empty_of_suffix_empty {t : PossiblyInfiniteTree α} : t <:+ empty -> t = empty := by
+  intro suf; rw [IsSuffix_iff] at suf; grind
 
 /-- We can express the `InfiniteTreeSkeleton.no_orphans` condition directly on `PossiblyInfiniteTree`. -/
+@[grind ->]
 theorem no_orphans' {t : PossiblyInfiniteTree α} :
     ∀ subtree, subtree <:+ t -> subtree.root = none -> subtree.childNodes = PossiblyInfiniteList.empty := by
   intro subtree suf root_none
   rw [PossiblyInfiniteList.empty_iff_head_none]
   apply t.no_orphans _ suf root_none
+  simp only [PossiblyInfiniteList.head]
   exact subtree.infinite_tree.childNodes.head_mem
 
 end Suffixes
@@ -405,6 +453,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
+@[expose]
 def Element (t : PossiblyInfiniteTree α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
@@ -424,6 +473,7 @@ theorem mem_rec
       cases eq : t2.root with
       | none => intro _ mem; simp [t.no_orphans t2 suffix eq _ c_mem] at mem
       | some r =>
+        rw [InfiniteTreeSkeleton.IsSuffix_iff] at suffix
         rcases suffix with ⟨ns, suffix⟩
         rcases c_mem with ⟨m, c_mem⟩
         rw [← suffix] at eq
@@ -457,30 +507,48 @@ def branchForAddress (t : PossiblyInfiniteTree α) (ns : InfiniteList Nat) : Pos
     rw [InfiniteTreeSkeleton.get_branchForAddress]
     rw [InfiniteList.take_succ']
     apply t.no_orphans (t.infinite_tree.drop (ns.take n)) (t.infinite_tree.IsSuffix_drop (ns.take n))
-    . rw [InfiniteTreeSkeleton.root_drop]; exact eq_none
-    . exists (ns.get n)
+    . simpa
+    . exists (ns.get n); simp
+
+/-- Getting from the branch corresponding to an infinite address corresponds to getting from the tree at the corresponding finite part of the address. -/
+@[simp, grind =]
+theorem get?_branchForAddress {t : PossiblyInfiniteTree α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get? n = t.get? (ns.take n) := by
+  simp [branchForAddress, PossiblyInfiniteList.get?, get?]
+
+/-- The `PossiblyInfiniteList.head` of `branchForAddress` is the tree's `root`. -/
+@[simp, grind =]
+theorem head_branchForAddress {t : PossiblyInfiniteTree α} {ns : InfiniteList Nat} : (t.branchForAddress ns).head = t.root := InfiniteTreeSkeleton.head_branchForAddress
+
+/-- The `PossiblyInfiniteList.tail` of `branchForAddress` corresponds to a branch in a child tree. -/
+@[simp]
+theorem tail_branchForAddress {t : PossiblyInfiniteTree α} {ns : InfiniteList Nat} :
+    (t.branchForAddress ns).tail = (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? ns.head)).branchForAddress ns.tail := by
+  ext; simp [InfiniteList.take_succ]
+
+/-- The `branchForAddress` of the empty tree is the empty list. -/
+@[simp]
+theorem branchForAddress_empty {α} {ns : InfiniteList Nat} : (@PossiblyInfiniteTree.empty α).branchForAddress ns = PossiblyInfiniteList.empty := by
+  ext; simp
 
 /-- An infinite address is maximal in a `PossiblyInfiniteTree` if whenever the the tree element is `none` at the nth step of the address, then all of its siblings are also none (and it is enough to demand that the first sibling is none). -/
+@[expose]
 def branchAddressIsMaximal (t : PossiblyInfiniteTree α) (ns : InfiniteList Nat) : Prop :=
   ∀ n, (t.branchForAddress ns).get? n.succ = none -> (t.drop (ns.take n)).childNodes.head = none
 
 /-- The `branches` in the `PossiblyInfiniteTree` are exactly the `PossiblyInfiniteList`s for which an infinite address exists that is also maximal. -/
+@[expose]
 def branches (t : PossiblyInfiniteTree α) : Set (PossiblyInfiniteList α) :=
   fun b => ∃ ns, b = t.branchForAddress ns ∧ t.branchAddressIsMaximal ns
-
-/-- Getting from the branch corresponding to an infinite address corresponds to getting from the tree at the corresponding finite part of the address. -/
-theorem get?_branchForAddress {t : PossiblyInfiniteTree α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get? n = t.get? (ns.take n) := by rfl
 
 /-- The set of `branches` can equivalently be expressed as the set of all `PossiblyInfiniteList`s where the head equals the root of the tree and the tail occurs in the branches of some childTree. If there are no childTrees, then the tail needs to be empty. -/
 theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
     b.head = t.root ∧ ((t.childTrees = PossiblyInfiniteList.empty ∧ b.tail = PossiblyInfiniteList.empty) ∨ (∃ c ∈ t.childTrees, b.tail ∈ c.val.branches)) := by
   unfold branches
-  apply Set.ext
-  intro b
+  ext b
   constructor
   . rintro ⟨ns, b_eq, ns_max⟩
     constructor
-    . rw [b_eq]; rfl
+    . grind
     . cases eq : t.childTrees.get? (ns.get 0) with
       | none =>
         apply Or.inl
@@ -492,8 +560,7 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
         constructor
         . specialize ns_max 0
           rw [get?_branchForAddress] at ns_max
-          rw [InfiniteList.take_succ, InfiniteList.take_zero, InfiniteList.take_zero, drop_nil] at ns_max
-          unfold InfiniteList.head at ns_max
+          rw [InfiniteList.take_succ, InfiniteList.take_zero, InfiniteList.take_zero, drop_nil, InfiniteList.head_eq] at ns_max
           specialize ns_max eq
           rw [PossiblyInfiniteList.head_eq] at ns_max
           rw [PossiblyInfiniteList.head_eq]
@@ -502,8 +569,7 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
         . rw [b_eq]
           rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_tail]
           rw [get?_branchForAddress]
-          rw [InfiniteList.take_succ, InfiniteList.take_zero]
-          unfold InfiniteList.head
+          rw [InfiniteList.take_succ, InfiniteList.take_zero, InfiniteList.head_eq]
           exact eq
       | some c =>
         apply Or.inr
@@ -523,7 +589,7 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
           rw [InfiniteList.take_succ]
           rw [← List.singleton_append]
           rw [← get?_drop]
-          unfold InfiniteList.head
+          rw [InfiniteList.head_eq]
           rw [eq.left]
         . intro n
           specialize ns_max (n+1)
@@ -531,7 +597,7 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
           rw [InfiniteList.take_succ] at ns_max
           rw [← List.singleton_append] at ns_max
           rw [← get?_drop] at ns_max
-          unfold InfiniteList.head at ns_max
+          rw [InfiniteList.head_eq] at ns_max
           rw [eq.left] at ns_max
           rw [get?_branchForAddress]
           intro h
@@ -539,7 +605,7 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
           rw [InfiniteList.take_succ] at ns_max
           rw [← List.singleton_append] at ns_max
           rw [← drop_drop] at ns_max
-          unfold InfiniteList.head at ns_max
+          rw [InfiniteList.head_eq] at ns_max
           rw [eq.left] at ns_max
           exact ns_max
   . rintro ⟨head_eq, tail_eq⟩
@@ -552,19 +618,20 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
         cases n with
         | zero =>
           rw [get?_branchForAddress, InfiniteList.take_zero]
+          rw [PossiblyInfiniteList.head_eq, root_eq] at head_eq
           exact head_eq
         | succ n =>
           rw [← PossiblyInfiniteList.get?_tail]
           rw [tail_eq.right, PossiblyInfiniteList.get?_empty]
           rw [get?_branchForAddress, InfiniteList.take_succ, ← List.singleton_append, ← get?_drop]
-          simp only [InfiniteList.head, InfiniteList.get]
+          simp only [InfiniteList.head_eq, InfiniteList.compute_get]
           have : t.childTrees.get? 0 = none := by rw [tail_eq.left, PossiblyInfiniteList.get?_empty]
           rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff] at this
           rw [← empty_iff_root_none] at this
           rw [this, get?_empty]
       . intro n
         rw [get?_branchForAddress, InfiniteList.take_succ', ← List.singleton_append, ← get?_drop]
-        simp only [InfiniteList.get, List.append_nil]
+        simp only [InfiniteList.compute_get, List.append_nil]
         rw [PossiblyInfiniteList.head_eq]
         rw [get?_childNodes]
         rw [← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]
@@ -584,7 +651,10 @@ theorem branches_eq {t : PossiblyInfiniteTree α} : t.branches = fun b =>
         intro n
         rw [get?_branchForAddress]
         cases n with
-        | zero => rw [InfiniteList.take_zero]; exact head_eq
+        | zero =>
+          rw [InfiniteList.take_zero]
+          rw [PossiblyInfiniteList.head_eq, root_eq] at head_eq
+          exact head_eq
         | succ n =>
           rw [← PossiblyInfiniteList.get?_tail, tail_eq]
           rw [InfiniteList.take_succ, InfiniteList.head_cons, InfiniteList.tail_cons]
@@ -647,11 +717,7 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
   have : ∀ n, PossiblyInfiniteTreeWithRoot.opt_to_tree (trees.get? n) = (trees.head.get (by simp only [trees, PossiblyInfiniteList.head_generate, Option.isSome_map]; exact isSome_start)).val.drop (addresses.take n) := by
     intro n
     induction n with
-    | zero =>
-      simp only [InfiniteList.take_zero, drop_nil, PossiblyInfiniteList.head_eq, PossiblyInfiniteTreeWithRoot.opt_to_tree]
-      split
-      case h_1 _ eq => simp only [trees, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_eq_none_iff] at eq; rw [eq] at isSome_start; simp at isSome_start
-      case h_2 _ _ eq => simp [eq]
+    | zero => simp only [InfiniteList.take_zero, drop_nil, PossiblyInfiniteList.head_eq, PossiblyInfiniteTreeWithRoot.opt_to_tree]; grind
     | succ n ih =>
       rw [InfiniteList.take_succ', ← drop_drop, ← ih]
       cases eq : trees.get? n with
@@ -697,7 +763,7 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
     rw [PossiblyInfiniteList.get?_map, get?_branchForAddress]
     simp only [trees, PossiblyInfiniteList.head_generate, Option.get_map] at this
     rw [← root_drop, ← this]
-    cases (PossiblyInfiniteList.generate start generator mapper).get? n <;> simp [PossiblyInfiniteTreeWithRoot.opt_to_tree, root_empty]
+    cases (PossiblyInfiniteList.generate start generator mapper).get? n <;> simp [PossiblyInfiniteTreeWithRoot.opt_to_tree]
   . intro n
     rw [get?_branchForAddress]
     simp only [trees, PossiblyInfiniteList.head_generate, Option.get_map] at this
@@ -707,19 +773,26 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
     rw [PossiblyInfiniteList.head_eq, get?_childNodes, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteList.head_eq, ← PossiblyInfiniteList.empty_iff_head_none]
     rw [Option.bind_eq_none_iff]
     intro eq_none
-    cases b_eq : (InfiniteList.iterate start fun x => x.bind generator).get n with
-    | none => simp [PossiblyInfiniteTreeWithRoot.opt_to_tree, childTrees_empty]
-    | some b => simp only [Option.map_some, PossiblyInfiniteTreeWithRoot.opt_to_tree]; apply maximal; apply eq_none; exact b_eq
+    cases b_eq : (InfiniteList.iterate start fun x => x.bind generator).get n <;> (simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]; grind)
 
 /-- The `PossiblyInfiniteList.head` of `generate_branch` is the `root` of the first tree. -/
-theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} : (generate_branch start generator mapper).head = start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) := by simp only [generate_branch]; rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_map, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_map]; rfl
+theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
+    (generate_branch start generator mapper).head =
+    start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) := by
+  simp only [generate_branch]
+  rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_map, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_map]
+  rfl
 
 /-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
-  ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intros; rfl
+    ∀ n, (generate_branch start generator mapper).get? n =
+    ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
+  simp [generate_branch]
 
 /-- The `PossiblyInfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
-theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} : (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := by unfold generate_branch; rw [PossiblyInfiniteList.tail_map, PossiblyInfiniteList.tail_generate]
+theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
+    (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := by
+  simp [generate_branch, PossiblyInfiniteList.tail_generate]
 
 end Generate
 
@@ -731,6 +804,7 @@ section Leaves
 The `leaves` of a `PossiblyInfiniteTree` is the set of elements that occur in a node that has no `childNodes`.
 -/
 
+@[expose]
 def leaves (t : PossiblyInfiniteTree α) : Set α := fun a => ∃ node : List Nat, t.get? node = some a ∧ (t.drop node).childNodes.head = none
 
 end Leaves
@@ -744,31 +818,111 @@ A `PossiblyInfiniteList` directly corresponds to the `PossiblyInfiniteTree`
 where the list is the "first" branch (with the address that only consists of zeros) and all other nodes are none.
 -/
 
+@[expose]
 def from_branch (b : PossiblyInfiniteList α) : PossiblyInfiniteTree α where
-  infinite_tree := fun ns => if ns.all (fun e => e = 0) then b.infinite_list ns.length else none
+  infinite_tree := fun ns => if ns.all (fun e => e = 0) then b.get? ns.length else none
   no_orphans := by
-    intro _ ⟨ns, eq⟩ root_none _ ⟨n, mem⟩
+    intro _ suf root_none _ mem
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨ns, eq⟩
+    rw [InfiniteList.mem_iff] at mem; rcases mem with ⟨n, mem⟩
     rw [← mem, ← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
     rw [← eq, InfiniteTreeSkeleton.root_drop] at root_none
-    simp only [InfiniteTreeSkeleton.get]
-    simp only [InfiniteTreeSkeleton.get] at root_none
-    cases eq : (ns ++ [n]).all (fun e => e = 0) with
-    | false => rfl
-    | true =>
-      have : ns.all (fun e => e = 0) := by rw [List.all_append, Bool.and_eq_true] at eq; exact eq.left
-      simp only [this] at root_none
-      simp only [List.length_append, List.length_singleton]
-      apply b.no_holes
-      exact root_none
+    simp only [InfiniteTreeSkeleton.compute_get]
+    simp only [InfiniteTreeSkeleton.compute_get] at root_none
+    grind
   no_holes_in_children := by
-    rintro _ ⟨ns, eq⟩ n _
+    intro _ suf n _
+    rw [InfiniteTreeSkeleton.IsSuffix_iff] at suf; rcases suf with ⟨ns, eq⟩
     rw [← eq, InfiniteTreeSkeleton.get_childNodes, InfiniteTreeSkeleton.get_drop]
-    simp only [InfiniteTreeSkeleton.get]
-    have : (ns ++ [n.succ]).all (fun e => e = 0) = false := by
-      rw [List.all_eq_false]
-      exists n.succ
-      simp
-    simp [this]
+    simp only [InfiniteTreeSkeleton.compute_get]
+    grind
+
+/-- For the `from_branch` tree, getting an address of exactly n zeros is the branch value at index n. -/
+theorem get?_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).get? ns = b.get? ns.length := by
+  unfold from_branch get?; rw [InfiniteTreeSkeleton.compute_get]; grind
+
+/-- For the `from_branch` tree, getting an address wit a non-zero number always returns none. -/
+theorem get?_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).get? ns = none := by
+  unfold from_branch get?; rw [InfiniteTreeSkeleton.compute_get]; grind
+
+/-- For the `from_branch` tree, the root is the head of the branch. -/
+@[simp, grind =]
+theorem root_from_branch {b : PossiblyInfiniteList α} : (from_branch b).root = b.head := by
+  rw [root_eq, get?_from_branch_of_all_zero (by simp)]
+  rw [PossiblyInfiniteList.head_eq]
+  simp
+
+/-- For the `from_branch` tree, dropping an address of exactly n zeros is the branch with n values dropped. -/
+theorem drop_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).drop ns = from_branch (b.drop ns.length) := by
+  ext ns2
+  cases Decidable.em (ns2.all (fun e => e = 0)) with
+  | inl all_zero2 =>
+    rw [get?_drop, get?_from_branch_of_all_zero]
+    rw [get?_from_branch_of_all_zero]
+    . simp
+    . grind
+    . grind
+  | inr some_ne_zero2 =>
+    have : ∃ n ∈ ns2, n ≠ 0 := by grind
+    rw [get?_drop, get?_from_branch_of_some_ne_zero]
+    rw [get?_from_branch_of_some_ne_zero]
+    . exact this
+    . rcases this with ⟨n, mem, ne⟩; exists n; grind
+
+/-- For the `from_branch` tree, dropping an address wit a non-zero number always returns the empty tree. -/
+theorem drop_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).drop ns = PossiblyInfiniteTree.empty := by
+  rw [empty_iff_root_none, root_drop, get?_from_branch_of_some_ne_zero]
+  grind
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees.get? 0 = PossiblyInfiniteTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [get?_childTrees, drop_from_branch_of_all_zero]
+  . have aux : b.tail = (b.drop 0).tail := by simp
+    rw [aux, PossiblyInfiniteList.tail_drop]
+    simp
+  . simp
+
+/-- For the `from_branch` tree, getting a non-zero child tree always returns none. -/
+theorem get?_childTrees_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childTrees.get? n = none := by
+  intro ne_zero
+  rw [get?_childTrees, drop_from_branch_of_some_ne_zero]
+  . rw [PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]; simp
+  . simpa
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem head_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees.head = PossiblyInfiniteTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [PossiblyInfiniteList.head_eq]
+  exact get?_zero_childTrees_from_branch
+
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes.get? 0 = b.tail.head := by
+  rw [get?_childNodes, get?_zero_childTrees_from_branch]
+  simp
+
+/-- For the `from_branch` tree, getting a non-zero child node always returns none. -/
+theorem get?_childNodes_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childNodes.get? n = none := by
+  intro ne_zero
+  rw [get?_childNodes, get?_childTrees_from_branch_of_ne_zero ne_zero]
+  simp
+
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem head_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes.head = b.tail.head := by
+  rw [PossiblyInfiniteList.head_eq]
+  exact get?_zero_childNodes_from_branch
 
 end FromBranch
 

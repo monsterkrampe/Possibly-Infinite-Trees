@@ -1,6 +1,8 @@
+module
+
 import BasicLeanDatastructures.Set.Finite
 
-import PossiblyInfiniteTrees.PossiblyInfiniteTree.PossiblyInfiniteTree
+public import PossiblyInfiniteTrees.PossiblyInfiniteTree.PossiblyInfiniteTree
 
 /-!
 # FiniteDegreeTree
@@ -13,14 +15,16 @@ However, note that there is no (global) bound for the number of children.
 The number of children might grow arbitrarily along the tree as long as it is finite everywhere.
 -/
 
+public section
+
 /-- A `PossiblyInfiniteTree` has `finitely_many_children` if for each subtree, the list of `PossiblyInfiniteTree.childTrees` is `PossiblyInfiniteList.finite`. -/
 def PossiblyInfiniteTree.finitely_many_children (t : PossiblyInfiniteTree α) : Prop :=
   ∀ subtree, subtree <:+ t -> subtree.childTrees.finite
 
 /-- The `PossiblyInfiniteTree.empty` tree has `finitely_many_children`. -/
+@[grind <-]
 theorem PossiblyInfiniteTree.finitely_many_children_empty {α} :
-    (@PossiblyInfiniteTree.empty α).finitely_many_children := by
-  intro _ suf; rw [empty_suffix_of_empty suf, childTrees_empty]; exact PossiblyInfiniteList.finite_empty
+  (@PossiblyInfiniteTree.empty α).finitely_many_children := by intro _ suf; grind
 
 /-- A `FiniteDegreeTree` is a `PossiblyInfiniteTree` with the `finitely_many_children` property. -/
 structure FiniteDegreeTree (α : Type u) where
@@ -53,35 +57,35 @@ instance : Membership α (FiniteDegreeTree α) where
   mem t a := a ∈ t.tree
 
 /-- An element is a member of the tree iff it occurs at some address. -/
-theorem mem_iff {t : FiniteDegreeTree α} : ∀ {e}, e ∈ t ↔ ∃ ns, t.get? ns = some e := by rfl
+theorem mem_iff {t : FiniteDegreeTree α} : ∀ {e}, e ∈ t ↔ ∃ ns, t.get? ns = some e := PossiblyInfiniteTree.mem_iff
 
 /-- Two `FiniteDegreeTree`s are the same if they agree on all addresses. -/
+@[ext, grind ext]
 theorem ext {t1 t2 : FiniteDegreeTree α} : (∀ ns, t1.get? ns = t2.get? ns) -> t1 = t2 := by
   intro h; rw [FiniteDegreeTree.mk.injEq]; apply PossiblyInfiniteTree.ext; exact h
 
-theorem ext_iff {t1 t2 : FiniteDegreeTree α} : t1 = t2 ↔ (∀ ns, t1.get? ns = t2.get? ns) := by
-  constructor
-  . intro h _; rw [h]
-  . exact ext
-
 /-- Get after drop can be rewritten into get. -/
-theorem get?_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).get? ns' = t.get? (ns ++ ns') := by rfl
+@[simp, grind =]
+theorem get?_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).get? ns' = t.get? (ns ++ ns') := PossiblyInfiniteTree.get?_drop
 
 /-- Dropping the empty address changes nothing. -/
-theorem drop_nil {t : FiniteDegreeTree α} : t.drop [] = t := by rfl
+@[simp, grind =]
+theorem drop_nil {t : FiniteDegreeTree α} : t.drop [] = t := by simp [drop]
 
 /-- Two calls to drop can be combined. -/
-theorem drop_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).drop ns' = t.drop (ns ++ ns') := by simp [drop, PossiblyInfiniteTree.drop_drop]
+@[simp, grind =]
+theorem drop_drop {t : FiniteDegreeTree α} {ns ns' : List Nat} : (t.drop ns).drop ns' = t.drop (ns ++ ns') := by simp [drop]
 
 /-- The `root` is equal to getting the empty address. -/
-theorem root_eq {t : FiniteDegreeTree α} : t.root = t.get? [] := by rfl
+theorem root_eq {t : FiniteDegreeTree α} : t.root = t.get? [] := PossiblyInfiniteTree.root_eq
 
 /-- The root is in the tree. -/
+@[grind ->]
 theorem root_mem {t : FiniteDegreeTree α} : ∀ r ∈ t.root, r ∈ t := t.tree.root_mem
 
 /-- The root of the dropped tree at address ns is exactly the element at address ns. -/
-theorem root_drop {t : FiniteDegreeTree α} {ns : List Nat} : (t.drop ns).root = t.get? ns := by
-  unfold root drop; simp [PossiblyInfiniteTree.root_drop]; rfl
+@[simp, grind =]
+theorem root_drop {t : FiniteDegreeTree α} {ns : List Nat} : (t.drop ns).root = t.get? ns := PossiblyInfiniteTree.root_drop
 
 end Basic
 
@@ -98,19 +102,25 @@ def empty : FiniteDegreeTree α where
   tree := PossiblyInfiniteTree.empty
   finitely_many_children := PossiblyInfiniteTree.finitely_many_children_empty
 
+/-- Unfolds the tree part of the definition. -/
+@[simp, grind =]
+theorem tree_empty {α} : (@FiniteDegreeTree.empty α).tree = @PossiblyInfiniteTree.empty α := by rfl
+
 /-- Getting from the `empty` tree always returns none. -/
-theorem get?_empty {α} : ∀ {n}, (@FiniteDegreeTree.empty α).get? n = none := by intro _; rfl
+@[simp, grind =]
+theorem get?_empty {α} : ∀ {n}, (@FiniteDegreeTree.empty α).get? n = none := PossiblyInfiniteTree.get?_empty
 
 /-- Dropping from the `empty` tree again yields the empty tree. -/
-theorem drop_empty {α} : ∀ {ns}, (@FiniteDegreeTree.empty α).drop ns = FiniteDegreeTree.empty := by
-  intro _; apply ext; intro _; rw [get?_drop, get?_empty, get?_empty]
+@[simp, grind =]
+theorem drop_empty {α} : ∀ {ns}, (@FiniteDegreeTree.empty α).drop ns = FiniteDegreeTree.empty := by intros; ext; simp
 
 /-- The `root` of the `empty` tree is none. -/
-theorem root_empty {α} : (@FiniteDegreeTree.empty α).root = none := by rfl
+@[simp, grind =]
+theorem root_empty {α} : (@FiniteDegreeTree.empty α).root = none := PossiblyInfiniteTree.root_empty
 
 /-- A tree is `empty` if and only if the `root` is none. -/
 theorem empty_iff_root_none {t : FiniteDegreeTree α} : t = FiniteDegreeTree.empty ↔ t.root = none := by
-  rw [FiniteDegreeTree.mk.injEq]; simp only [empty]; rw [PossiblyInfiniteTree.empty_iff_root_none]; rfl
+  rw [FiniteDegreeTree.mk.injEq]; simp only [empty, PossiblyInfiniteTree.empty_iff_root_none]; rfl
 
 end Empty
 
@@ -139,7 +149,8 @@ For this purpose, we also provide methods `from_possibly_infinite` and `to_possi
 between `FiniteDegreeTreeWithRoot` and `PossiblyInfiniteTreeWithRoot`.
 -/
 
-def from_possibly_infinite (t : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot α) (fin : t.val.finitely_many_children) : FiniteDegreeTreeWithRoot α := ⟨{tree := t.val, finitely_many_children := fin}, t.property⟩
+def from_possibly_infinite (t : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot α) (fin : t.val.finitely_many_children) : FiniteDegreeTreeWithRoot α :=
+  ⟨{tree := t.val, finitely_many_children := fin}, t.property⟩
 
 def to_possibly_infinite (t : FiniteDegreeTreeWithRoot α) : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot α :=
   ⟨t.val.tree, t.property⟩
@@ -148,18 +159,26 @@ def opt_to_tree (opt : Option (FiniteDegreeTreeWithRoot α)) : FiniteDegreeTree 
   tree := PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree (opt.map to_possibly_infinite)
   finitely_many_children := by
     cases opt with
-    | none => exact PossiblyInfiniteTree.finitely_many_children_empty
-    | some t => exact t.val.finitely_many_children
+    | none => simpa using PossiblyInfiniteTree.finitely_many_children_empty
+    | some t => simpa using t.val.finitely_many_children
 
 def tree_to_opt (t : FiniteDegreeTree α) : Option (FiniteDegreeTreeWithRoot α) :=
   (PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt t.tree).attach.map (fun t' =>
     from_possibly_infinite t'.val (by have prop := t'.property; rw [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff] at prop; rw [← prop.left]; exact t.finitely_many_children))
 
+@[simp, grind =]
 theorem from_possibly_infinite_after_to_possibly_infinite {t : FiniteDegreeTreeWithRoot α} :
-  from_possibly_infinite (t.to_possibly_infinite) t.val.finitely_many_children = t := by rfl
+  from_possibly_infinite (t.to_possibly_infinite) (by exact t.val.finitely_many_children) = t := by rfl
 
+@[simp, grind =]
 theorem to_possibly_infinite_after_from_possibly_infinite (t : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot α) (fin : t.val.finitely_many_children) :
   (from_possibly_infinite t fin).to_possibly_infinite = t := by rfl
+
+@[simp, grind =]
+theorem opt_to_tree_none {α} : opt_to_tree none = @FiniteDegreeTree.empty α := by simp [opt_to_tree, empty]
+
+@[simp, grind =]
+theorem opt_to_tree_some {t : FiniteDegreeTreeWithRoot α} : opt_to_tree (some t) = t.val := by simp [opt_to_tree, to_possibly_infinite]
 
 theorem opt_to_tree_none_iff {opt : Option (FiniteDegreeTreeWithRoot α)} : opt = none ↔ (opt_to_tree opt).root = none := by
   unfold opt_to_tree root
@@ -194,22 +213,19 @@ theorem tree_to_opt_some_iff {t : FiniteDegreeTree α} : ∀ {t'}, tree_to_opt t
       . exact root_some
     . simp [from_possibly_infinite_after_to_possibly_infinite]
 
+@[simp, grind =]
 theorem tree_to_opt_after_opt_to_tree {opt : Option (FiniteDegreeTreeWithRoot α)} :
     tree_to_opt (opt_to_tree opt) = opt := by
   unfold opt_to_tree tree_to_opt
   rw [Option.map_attach_eq_pmap]
-  simp only [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_after_opt_to_tree]
-  rw [Option.pmap_map]
-  simp only [from_possibly_infinite_after_to_possibly_infinite]
-  simp
+  simp [Option.pmap_map]
 
+@[simp, grind =]
 theorem opt_to_tree_after_tree_to_opt {t : FiniteDegreeTree α} :
     opt_to_tree (tree_to_opt t) = t := by
   unfold opt_to_tree tree_to_opt
   rw [Option.map_attach_eq_pmap]
-  simp only [Option.map_pmap, to_possibly_infinite_after_from_possibly_infinite]
-  simp only [Option.pmap_eq_map, Option.map_id']
-  simp only [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]
+  simp [Option.map_pmap]
 
 end FiniteDegreeTreeWithRoot
 
@@ -228,22 +244,18 @@ def childTrees (t : FiniteDegreeTree α) : List (FiniteDegreeTreeWithRoot α) :=
     rcases t'_mem with ⟨n, t'_mem⟩
     rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_some_iff] at t'_mem
     rw [← suf, ← t'_mem.left]
-    exact t.finitely_many_children _ (PossiblyInfiniteTree.IsSuffix_drop (n::ns))))
+    exact t.finitely_many_children _ (by grind)))
 
 /-- `FiniteDegreeTree.childTrees` can be expressed through `PossiblyInfiniteTree.childTrees`. -/
 theorem mem_childTrees_iff {t : FiniteDegreeTree α} : ∀ c, c ∈ t.childTrees ↔ c.to_possibly_infinite ∈ t.tree.childTrees := by
   intro c
   simp only [childTrees, List.mem_map, List.mem_attach, true_and]
   constructor
-  . rintro ⟨⟨d, d_mem⟩, c_eq⟩
-    rw [← c_eq]
-    rw [FiniteDegreeTreeWithRoot.to_possibly_infinite_after_from_possibly_infinite]
-    rw [PossiblyInfiniteList.mem_toList_of_finite] at d_mem
-    exact d_mem
-  . intro c_mem
-    exists ⟨c.to_possibly_infinite, by rw [PossiblyInfiniteList.mem_toList_of_finite]; exact c_mem⟩
+  . grind
+  . intro _; exists ⟨c.to_possibly_infinite, by grind⟩
 
 /-- Getting a child tree is the same as dropping the corresponding singleton address. -/
+@[simp, grind =]
 theorem get?_childTrees {t : FiniteDegreeTree α} : ∀ n, t.childTrees[n]? = FiniteDegreeTreeWithRoot.tree_to_opt (t.drop [n]) := by
   intro n
   unfold childTrees
@@ -254,6 +266,7 @@ theorem get?_childTrees {t : FiniteDegreeTree α} : ∀ n, t.childTrees[n]? = Fi
   cases eq : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt (t.tree.drop [n]) <;> simp [PossiblyInfiniteTree.get?_childTrees, drop, eq]
 
 /-- Getting a child tree is the same as dropping the corresponding singleton address. -/
+@[simp, grind =]
 theorem get_childTrees {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childTrees.length) -> t.childTrees[n].val = t.drop [n] := by
   intro n lt
   have get_some : t.childTrees[n]?.isSome := by rw [List.getElem?_eq_getElem lt]; simp
@@ -273,12 +286,13 @@ theorem get_childTrees {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childTrees
   rw [this]
 
 /-- Getting at an address in a child tree can be combined into a single get call. -/
-theorem get?_get?_childTrees {t : FiniteDegreeTree α} : ∀ n ns, (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).get? ns = t.get? (n::ns) := by intros; rw [get?_childTrees, FiniteDegreeTreeWithRoot.opt_to_tree_after_tree_to_opt]; rfl
+theorem get?_get?_childTrees {t : FiniteDegreeTree α} : ∀ n ns, (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).get? ns = t.get? (n::ns) := by
+  intros; simp
 
 /-- The `childTrees` of the `empty` tree are exactly `[]`. -/
+@[simp, grind =]
 theorem childTrees_empty {α} : (@FiniteDegreeTree.empty α).childTrees = [] := by
-  simp only [childTrees, List.map_eq_nil_iff, List.attach_eq_nil_iff, PossiblyInfiniteList.toList_of_finite_empty_iff, empty]
-  exact PossiblyInfiniteTree.childTrees_empty
+  simp [childTrees, PossiblyInfiniteList.toList_of_finite_empty_iff, empty]
 
 end ChildTrees
 
@@ -296,58 +310,52 @@ def node (root : α) (childTrees : List (FiniteDegreeTreeWithRoot α)) : FiniteD
   finitely_many_children := by
     intro _; rw [PossiblyInfiniteTree.IsSuffix_iff]; intro ⟨ns, suf⟩; rw [← suf]
     cases ns with
-    | nil => exists childTrees.length; rw [PossiblyInfiniteTree.drop_nil, PossiblyInfiniteTree.childTrees_node, PossiblyInfiniteList.get?_from_list, List.getElem?_map, (List.getElem?_eq_none (by simp)), Option.map_none]
+    | nil => exists childTrees.length; simp
     | cons n ns =>
       rw [PossiblyInfiniteTree.drop_node_cons, PossiblyInfiniteList.get?_from_list, List.getElem?_map]
       cases Decidable.em (n < childTrees.length) with
-      | inl n_le => rw [List.getElem?_eq_getElem n_le]; exact childTrees[n].val.finitely_many_children _ (by exists ns)
-      | inr n_le => rw [List.getElem?_eq_none (Nat.le_of_not_lt n_le), Option.map_none]; simp only [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree]; rw [PossiblyInfiniteTree.drop_empty, PossiblyInfiniteTree.childTrees_empty]; exact PossiblyInfiniteList.finite_empty
+      | inl n_le =>
+        rw [List.getElem?_eq_getElem n_le]
+        exact childTrees[n].val.finitely_many_children _ (by grind [FiniteDegreeTreeWithRoot.to_possibly_infinite])
+      | inr n_le =>
+        rw [List.getElem?_eq_none (Nat.le_of_not_lt n_le)]
+        grind
 
 /-- Getting the element at address [] on `node` is the new root. -/
-theorem get?_node_nil {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by rfl
+@[simp, grind =]
+theorem get?_node_nil {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).get? [] = .some root := by simp [node, get?]
 
 /-- Getting any address != [] on `node` yields the respective element from the previous `FiniteDegreeTreeWithRoot`. -/
-theorem get?_node_cons {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : ∀ n ns, (node root childTrees).get? (n :: ns) = (FiniteDegreeTreeWithRoot.opt_to_tree childTrees[n]?).get? ns := by
+theorem get?_node_cons {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} :
+    ∀ n ns, (node root childTrees).get? (n :: ns) = (FiniteDegreeTreeWithRoot.opt_to_tree childTrees[n]?).get? ns := by
   intro n ns
-  simp only [node, get?]
-  rw [PossiblyInfiniteTree.get?_node_cons, PossiblyInfiniteList.get?_from_list, List.getElem?_map]
-  rfl
+  unfold FiniteDegreeTreeWithRoot.opt_to_tree
+  simp [node, get?, PossiblyInfiniteTree.get?_node_cons]
 
 /-- Dropping from `node` with an address of the form `n::ns` is the same as getting the `n` child from the child trees used in the construction and then dropping `ns` there.  -/
 theorem drop_node_cons {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} {n : Nat} {ns : List Nat} : (node root childTrees).drop (n::ns) = (FiniteDegreeTreeWithRoot.opt_to_tree childTrees[n]?).drop ns := by
-  simp only [node, drop, PossiblyInfiniteTree.drop_node_cons]
   unfold FiniteDegreeTreeWithRoot.opt_to_tree
-  simp only [PossiblyInfiniteList.get?_from_list, List.getElem?_map]
+  simp [node, drop, PossiblyInfiniteTree.drop_node_cons]
 
 /-- The `root` of `node` is the root used in the construction. -/
-theorem root_node {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).root = root := by rfl
+@[simp, grind =]
+theorem root_node {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).root = root := PossiblyInfiniteTree.root_node
 
 /-- The `childTrees` of `node` are the childTrees used in the construction. -/
+@[simp, grind =]
 theorem childTrees_node {root : α} {childTrees : List (FiniteDegreeTreeWithRoot α)} : (node root childTrees).childTrees = childTrees := by
   simp only [node, FiniteDegreeTree.childTrees]
-  apply List.ext_getElem?
-  intro n
-  rw [List.getElem?_map, List.getElem?_attach]
-  simp only [PossiblyInfiniteTree.childTrees_node]
-  simp only [PossiblyInfiniteList.toList_of_finite_after_from_list]
-  cases eq : childTrees[n]? with
-  | none => simp only [List.getElem?_map, eq]; simp
-  | some t => simp only [List.getElem?_map, eq]; simp [FiniteDegreeTreeWithRoot.from_possibly_infinite_after_to_possibly_infinite]
+  ext n
+  cases eq : childTrees[n]? <;> simp [eq]
 
 /-- Any `FiniteDegreeTree` where the `root` is not none can be written using the `node` constructor. -/
 theorem node_root_childTrees {t : FiniteDegreeTree α} {root : α} (h : t.root = .some root) : t = node root t.childTrees := by
   rw [FiniteDegreeTree.mk.injEq]
-  simp only [node]
   rw [PossiblyInfiniteTree.node_root_childTrees h]
   apply congrArg
   unfold childTrees
-  apply PossiblyInfiniteList.ext
-  intro n
-  rw [PossiblyInfiniteList.get?_from_list, List.getElem?_map]
-  rw [List.getElem?_map, List.getElem?_attach]
-  cases eq : t.tree.childTrees.get? n with
-  | none => simp only [PossiblyInfiniteList.getElem?_toList_of_finite, eq]; simp
-  | some => simp only [PossiblyInfiniteList.getElem?_toList_of_finite, eq, Option.pmap_some, Option.map_some]; rw [FiniteDegreeTreeWithRoot.to_possibly_infinite_after_from_possibly_infinite]
+  ext n
+  cases eq : t.tree.childTrees.get? n <;> simp [eq]
 
 end Node
 
@@ -365,13 +373,7 @@ def childNodes (t : FiniteDegreeTree α) : List α := t.tree.childNodes.toList_o
 
 /-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
 theorem get?_childNodes {t : FiniteDegreeTree α} : ∀ {n : Nat}, t.childNodes[n]? = (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).root := by
-  intro n
-  rw [get?_childTrees, FiniteDegreeTreeWithRoot.opt_to_tree_after_tree_to_opt]
-  unfold childNodes
-  rw [PossiblyInfiniteList.getElem?_toList_of_finite]
-  rw [PossiblyInfiniteTree.get?_childNodes, PossiblyInfiniteTree.get?_childTrees]
-  rw [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]
-  rfl
+  simp [childNodes, PossiblyInfiniteTree.get?_childNodes, get?]
 
 /-- The `childNodes` are the `root`s of the `childTrees`. -/
 theorem childNodes_eq {t : FiniteDegreeTree α} : t.childNodes = t.childTrees.map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
@@ -388,21 +390,23 @@ theorem childNodes_eq {t : FiniteDegreeTree α} : t.childNodes = t.childTrees.ma
     rfl
 
 /-- The `childNodes` have the same length as the `childTrees`. -/
-theorem length_childNodes {t : FiniteDegreeTree α} : t.childNodes.length = t.childTrees.length := by
-  rw [childNodes_eq, List.length_map]
+@[simp, grind =]
+theorem length_childNodes {t : FiniteDegreeTree α} : t.childNodes.length = t.childTrees.length := by simp [childNodes_eq]
 
 /-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
-theorem get_childNodes {t : FiniteDegreeTree α} : ∀ n, (lt : n < t.childNodes.length) -> t.childNodes[n] = (t.childTrees[n]'(by rw [← length_childNodes]; exact lt)).val.root := by
-  intro n lt; rw [List.getElem_eq_getElem?_get, Option.some_get, get?_childNodes, get?_childTrees, FiniteDegreeTreeWithRoot.opt_to_tree_after_tree_to_opt, get_childTrees]
+theorem get_childNodes {t : FiniteDegreeTree α} :
+    ∀ n, (lt : n < t.childNodes.length) -> t.childNodes[n] = (t.childTrees[n]'(by rw [← length_childNodes]; exact lt)).val.root := by
+  intro n lt; rw [List.getElem_eq_getElem?_get, Option.some_get, get?_childNodes]; simp
 
 /-- Each child node is a tree member. -/
+@[grind ->]
 theorem mem_of_mem_childNodes {t : FiniteDegreeTree α} : ∀ c ∈ t.childNodes, c ∈ t := by
-  intro c c_mem; apply t.tree.mem_of_mem_childNodes; unfold childNodes at c_mem; rw [PossiblyInfiniteList.mem_toList_of_finite] at c_mem; exact c_mem
+  intro c c_mem; apply t.tree.mem_of_mem_childNodes; grind [childNodes]
 
 /-- The `childNodes` of the `empty` tree are `[]`. -/
+@[simp, grind =]
 theorem childNodes_empty {α} : (@FiniteDegreeTree.empty α).childNodes = [] := by
-  simp only [childNodes, PossiblyInfiniteList.toList_of_finite_empty_iff, empty]
-  exact PossiblyInfiniteTree.childNodes_empty
+  simp [childNodes, empty, PossiblyInfiniteList.toList_of_finite_empty_iff]
 
 end ChildNodes
 
@@ -426,32 +430,39 @@ infixl:50 " <:+ " => IsSuffix
 
 /-- t1 is a subtree of t2 if t1 can be obtained from t2 by dropping. -/
 theorem IsSuffix_iff {t1 t2 : FiniteDegreeTree α} : t1 <:+ t2 ↔ ∃ ns, t2.drop ns = t1 := by
+  unfold IsSuffix; rw [PossiblyInfiniteTree.IsSuffix_iff]
   constructor
-  . rintro ⟨ns, h⟩; exists ns; simp [drop, PossiblyInfiniteTree.drop, h]
-  . rintro ⟨ns, h⟩; exists ns; simp only [drop, PossiblyInfiniteTree.drop] at h; rw [← h]
+  . rintro ⟨ns, h⟩; exists ns; simp [drop, h]
+  . rintro ⟨ns, h⟩; exists ns; simp only [drop] at h; rw [← h]
 
 /-- The suffix relation is reflexive. -/
+@[grind <-]
 theorem IsSuffix_refl {t : FiniteDegreeTree α} : t <:+ t := t.tree.IsSuffix_refl
 
 /-- The suffix relation is transitive. -/
+@[grind ->]
 theorem IsSuffix_trans {t1 t2 t3 : FiniteDegreeTree α} : t1 <:+ t2 -> t2 <:+ t3 -> t1 <:+ t3 := PossiblyInfiniteTree.IsSuffix_trans
 
 /-- A member of a subtree is also a member of the current tree. -/
+@[grind ->]
 theorem mem_of_mem_suffix {t1 t2 : FiniteDegreeTree α} (suffix : t1 <:+ t2) : ∀ e ∈ t1, e ∈ t2 := PossiblyInfiniteTree.mem_of_mem_suffix suffix
 
 /-- Dropping elements yields a subtree. -/
+@[grind <-]
 theorem IsSuffix_drop {t : FiniteDegreeTree α} : ∀ ns, t.drop ns <:+ t := t.tree.IsSuffix_drop
 
 /-- Each child tree is a subtree. -/
+@[grind ->]
 theorem IsSuffix_of_mem_childTrees {t : FiniteDegreeTree α} : ∀ c ∈ t.childTrees, c.val <:+ t := by
-  intro c c_mem; rw [mem_childTrees_iff] at c_mem
-  exact t.tree.IsSuffix_of_mem_childTrees _ c_mem
+  intro c c_mem; rw [mem_childTrees_iff] at c_mem; exact t.tree.IsSuffix_of_mem_childTrees _ c_mem
 
 /-- Every suffix of the empty tree is empty. -/
+@[grind ->]
 theorem empty_suffix_of_empty {t : FiniteDegreeTree α} : t <:+ empty -> t = empty := by
-  intro suf; rw [IsSuffix_iff] at suf; rcases suf with ⟨_, suf⟩; rw [← suf]; exact drop_empty
+  intro suf; rw [IsSuffix_iff] at suf; grind
 
 /-- We can express the `PossiblyInfiniteTree.no_orphans'` condition directly on `FiniteDegreeTree`. -/
+@[grind ->]
 theorem no_orphans {t : FiniteDegreeTree α} :
     ∀ subtree, subtree <:+ t -> subtree.root = none -> subtree.childNodes = [] := by
   intro _; unfold childNodes; rw [PossiblyInfiniteList.toList_of_finite_empty_iff]; apply t.tree.no_orphans'
@@ -469,6 +480,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
+@[expose]
 def Element (t : FiniteDegreeTree α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
@@ -486,7 +498,7 @@ theorem mem_rec
     rcases suffix with ⟨ns, suffix⟩
     apply step (t.drop ns) (t.IsSuffix_drop ns)
     . rcases ih with ⟨r, r_mem, ih⟩; rw [← suffix] at r_mem; exists r, r_mem
-    . rw [← suffix] at c_mem; unfold childNodes; rw [PossiblyInfiniteList.mem_toList_of_finite]; exact c_mem
+    . rw [← suffix] at c_mem; simpa [childNodes] using c_mem
 
 end ElementRecursor
 
@@ -500,16 +512,51 @@ and can be characterizes by an infinite "address", i.e. `InfiniteList Nat`.
 Here, we merely define them as the branches of the underlying `PossiblyInfiniteTree`.
 -/
 
+/-- This function defines the `PossiblyInfiniteList` of tree elements that corresponds to a given infinite address. -/
+def branchForAddress (t : FiniteDegreeTree α) (ns : InfiniteList Nat) : PossiblyInfiniteList α := t.tree.branchForAddress ns
+
+/-- Getting from the branch corresponding to an infinite address corresponds to getting from the tree at the corresponding finite part of the address. -/
+@[simp, grind =]
+theorem get?_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} {n : Nat} : (t.branchForAddress ns).get? n = t.get? (ns.take n) :=
+  PossiblyInfiniteTree.get?_branchForAddress
+
+/-- The `PossiblyInfiniteList.head` of `branchForAddress` is the tree's `root`. -/
+@[simp, grind =]
+theorem head_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} : (t.branchForAddress ns).head = t.root :=
+  PossiblyInfiniteTree.head_branchForAddress
+
+/-- The `PossiblyInfiniteList.tail` of `branchForAddress` corresponds to a branch in a child tree. -/
+@[simp]
+theorem tail_branchForAddress {t : FiniteDegreeTree α} {ns : InfiniteList Nat} :
+    (t.branchForAddress ns).tail = (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[ns.head]?).branchForAddress ns.tail := by
+  ext; simp [InfiniteList.take_succ]
+
+/-- The `branchForAddress` of the empty tree is the empty list. -/
+@[simp]
+theorem branchForAddress_empty {α} {ns : InfiniteList Nat} : (@FiniteDegreeTree.empty α).branchForAddress ns = PossiblyInfiniteList.empty :=
+  PossiblyInfiniteTree.branchForAddress_empty
+
+/-- We lift `PossiblyInfiniteTree.branchAddressIsMaximal` to `FiniteDegreeTree`. -/
+def branchAddressIsMaximal (t : FiniteDegreeTree α) (ns : InfiniteList Nat) : Prop := t.tree.branchAddressIsMaximal ns
+
+/-- Unfolds the definition of `branchAddressIsMaximal`. -/
+theorem branchAddressIsMaximal_iff {t : FiniteDegreeTree α} {ns : InfiniteList Nat} :
+    t.branchAddressIsMaximal ns ↔ ∀ n, (t.branchForAddress ns).get? n.succ = none -> (t.drop (ns.take n)).childNodes = [] := by
+  unfold branchAddressIsMaximal PossiblyInfiniteTree.branchAddressIsMaximal childNodes drop
+  simp [get?, PossiblyInfiniteList.toList_of_finite_empty_iff, PossiblyInfiniteList.empty_iff_head_none]
+
 /-- The `branches` in the `FiniteDegreeTree` are exactly the branches in the underlying `PossiblyInfiniteTree`. -/
 def branches (t : FiniteDegreeTree α) : Set (PossiblyInfiniteList α) := t.tree.branches
+
+/-- Unfolds the `branches` definition mimicing to the underlying definition on the `PossiblyInfiniteTree`. -/
+theorem mem_branches {t : FiniteDegreeTree α} : ∀ {b}, b ∈ t.branches ↔ ∃ ns, b = t.branchForAddress ns ∧ t.branchAddressIsMaximal ns := by rfl
 
 /-- The set of `branches` can equivalently be expressed as the set of all `PossiblyInfiniteList`s where the head equals the root of the tree and the tail occurs in the branches of some childTree. If there are no childTrees, then the tail needs to be empty. -/
 theorem branches_eq {t : FiniteDegreeTree α} : t.branches = fun b =>
     b.head = t.root ∧ ((t.childTrees = [] ∧ b.tail = PossiblyInfiniteList.empty) ∨ (∃ c ∈ t.childTrees, b.tail ∈ c.val.branches)) := by
   unfold branches
   rw [PossiblyInfiniteTree.branches_eq]
-  apply Set.ext
-  intro b
+  ext b
   constructor
   . rintro ⟨head_eq, tail_eq⟩
     constructor
@@ -519,9 +566,7 @@ theorem branches_eq {t : FiniteDegreeTree α} : t.branches = fun b =>
       apply Or.inl
       constructor
       . unfold childTrees
-        rw [List.map_eq_nil_iff, List.attach_eq_nil_iff]
-        rw [PossiblyInfiniteList.toList_of_finite_empty_iff]
-        exact tail_eq.left
+        simpa [PossiblyInfiniteList.toList_of_finite_empty_iff] using tail_eq.left
       . exact tail_eq.right
     | inr tail_eq =>
       apply Or.inr
@@ -550,9 +595,7 @@ theorem branches_eq {t : FiniteDegreeTree α} : t.branches = fun b =>
       apply Or.inl
       constructor
       . unfold childTrees at tail_eq
-        rw [List.map_eq_nil_iff, List.attach_eq_nil_iff] at tail_eq
-        rw [PossiblyInfiniteList.toList_of_finite_empty_iff] at tail_eq
-        exact tail_eq.left
+        simpa [PossiblyInfiniteList.toList_of_finite_empty_iff] using tail_eq.left
       . exact tail_eq.right
     | inr tail_eq =>
       apply Or.inr
@@ -599,29 +642,27 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
     (isSome_start : start.isSome) :
     generate_branch start generator mapper ∈ (mapper (start.get isSome_start)).val.branches := by
   apply PossiblyInfiniteTree.generate_branch_mem_branches
-  . intro b b' b'_mem
-    specialize next_is_child b b' b'_mem
-    simp only [childTrees, List.mem_map, List.mem_attach, true_and] at next_is_child
-    rcases next_is_child with ⟨t, next_is_child⟩
-    rw [← next_is_child, FiniteDegreeTreeWithRoot.to_possibly_infinite_after_from_possibly_infinite]
-    simp only [FiniteDegreeTreeWithRoot.to_possibly_infinite]
-    rw [← PossiblyInfiniteList.mem_toList_of_finite]
-    exact t.property
+  . grind [childTrees, FiniteDegreeTreeWithRoot.to_possibly_infinite]
   . intro b eq_none
     specialize maximal b eq_none
     simp only [childTrees, List.map_eq_nil_iff, List.attach_eq_nil_iff, PossiblyInfiniteList.toList_of_finite_empty_iff] at maximal
-    simp only [FiniteDegreeTreeWithRoot.to_possibly_infinite]
-    exact maximal
+    simpa [FiniteDegreeTreeWithRoot.to_possibly_infinite] using maximal
 
 /-- The `PossiblyInfiniteList.head` of `generate_branch` is the `root` of the first tree. -/
-theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} : (generate_branch start generator mapper).head = start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) := PossiblyInfiniteTree.head_generate_branch
+theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
+    (generate_branch start generator mapper).head =
+    start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) :=
+  PossiblyInfiniteTree.head_generate_branch
 
 /-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
-  ∀ n, (generate_branch start generator mapper).get? n = ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, PossiblyInfiniteList.get?_generate, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
+    ∀ n, (generate_branch start generator mapper).get? n =
+    ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
+  intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, PossiblyInfiniteList.get?_generate, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
 
 /-- The `PossiblyInfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
-theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} : (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := PossiblyInfiniteTree.tail_generate_branch
+theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
+  (generate_branch start generator mapper).tail = generate_branch (start.bind generator) generator mapper := PossiblyInfiniteTree.tail_generate_branch
 
 end Generate
 
@@ -636,6 +677,13 @@ The function is simply defined via `PossiblyInfiniteTree.leaves` for the underly
 
 def leaves (t : FiniteDegreeTree α) : Set α := t.tree.leaves
 
+/-- Unfold the definition of leaves using `FiniteDegreeTree` vocabulary. -/
+theorem mem_leaves {t : FiniteDegreeTree α} : ∀ {l}, l ∈ t.leaves ↔ ∃ ns : List Nat, t.get? ns = some l ∧ (t.drop ns).childNodes = [] := by
+  intro l
+  unfold leaves PossiblyInfiniteTree.leaves get? childNodes drop
+  simp only [PossiblyInfiniteList.toList_of_finite_empty_iff, PossiblyInfiniteList.empty_iff_head_none]
+  constructor <;> (intro ⟨ns, eq, empty⟩; exists ns)
+
 end Leaves
 
 section FromBranch
@@ -647,6 +695,7 @@ A `PossiblyInfiniteList` directly corresponds to the `FiniteDegreeTree`
 where the list is the "first" branch (with the address that only consists of zeros) and all other nodes are none.
 -/
 
+@[expose]
 def from_branch (b : PossiblyInfiniteList α) : FiniteDegreeTree α where
   tree := PossiblyInfiniteTree.from_branch b
   finitely_many_children := by
@@ -655,8 +704,78 @@ def from_branch (b : PossiblyInfiniteList α) : FiniteDegreeTree α where
     rw [PossiblyInfiniteTree.get?_childTrees, PossiblyInfiniteTree.drop_drop]
     rw [PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt_none_iff]
     simp only [PossiblyInfiniteTree.from_branch, PossiblyInfiniteTree.root_eq, PossiblyInfiniteTree.get?_drop]
-    simp only [PossiblyInfiniteTree.get?, InfiniteTreeSkeleton.get]
+    simp only [PossiblyInfiniteTree.get?, InfiniteTreeSkeleton.compute_get]
     simp
+
+/-- For the `from_branch` tree, getting an address of exactly n zeros is the branch value at index n. -/
+theorem get?_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).get? ns = b.get? ns.length := PossiblyInfiniteTree.get?_from_branch_of_all_zero all_zero
+
+/-- For the `from_branch` tree, getting an address wit a non-zero number always returns none. -/
+theorem get?_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).get? ns = none := PossiblyInfiniteTree.get?_from_branch_of_some_ne_zero some_ne_zero
+
+/-- For the `from_branch` tree, the root is the head of the branch. -/
+@[simp, grind =]
+theorem root_from_branch {b : PossiblyInfiniteList α} : (from_branch b).root = b.head := PossiblyInfiniteTree.root_from_branch
+
+/-- For the `from_branch` tree, dropping an address of exactly n zeros is the branch with n values dropped. -/
+theorem drop_from_branch_of_all_zero {b : PossiblyInfiniteList α} {ns : List Nat} (all_zero : ∀ n ∈ ns, n = 0) :
+    (from_branch b).drop ns = from_branch (b.drop ns.length) := by
+  rw [FiniteDegreeTree.mk.injEq]
+  exact PossiblyInfiniteTree.drop_from_branch_of_all_zero all_zero
+
+/-- For the `from_branch` tree, dropping an address wit a non-zero number always returns the empty tree. -/
+theorem drop_from_branch_of_some_ne_zero {b : PossiblyInfiniteList α} {ns : List Nat} (some_ne_zero : ∃ n ∈ ns, n ≠ 0) :
+    (from_branch b).drop ns = FiniteDegreeTree.empty := by
+  rw [FiniteDegreeTree.mk.injEq]
+  exact PossiblyInfiniteTree.drop_from_branch_of_some_ne_zero some_ne_zero
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees[0]? = FiniteDegreeTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [get?_childTrees, drop_from_branch_of_all_zero]
+  . have aux : b.tail = (b.drop 0).tail := by simp
+    rw [aux, PossiblyInfiniteList.tail_drop]
+    simp
+  . simp
+
+/-- For the `from_branch` tree, getting a non-zero child tree always returns none. -/
+theorem get?_childTrees_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childTrees[n]? = none := by
+  intro ne_zero
+  rw [get?_childTrees, drop_from_branch_of_some_ne_zero]
+  . rw [FiniteDegreeTreeWithRoot.tree_to_opt_none_iff]; simp
+  . simpa
+
+/-- For the `from_branch` tree, getting the first child tree is the `from_branch` tree for the branch tail. -/
+@[simp, grind =]
+theorem head_childTrees_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childTrees.head? = FiniteDegreeTreeWithRoot.tree_to_opt (from_branch b.tail) := by
+  rw [List.head?_eq_getElem?]
+  exact get?_zero_childTrees_from_branch
+
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem get?_zero_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes[0]? = b.tail.head := by
+  rw [get?_childNodes, get?_zero_childTrees_from_branch]
+  simp
+
+/-- For the `from_branch` tree, getting a non-zero child node always returns none. -/
+theorem get?_childNodes_from_branch_of_ne_zero {b : PossiblyInfiniteList α} {n : Nat} :
+    n ≠ 0 -> (from_branch b).childNodes[n]? = none := by
+  intro ne_zero
+  rw [get?_childNodes, get?_childTrees_from_branch_of_ne_zero ne_zero]
+  simp
+
+/-- For the `from_branch` tree, getting the first child node is the head of the branch tail. -/
+@[simp, grind =]
+theorem head_childNodes_from_branch {b : PossiblyInfiniteList α} :
+    (from_branch b).childNodes.head? = b.tail.head := by
+  rw [List.head?_eq_getElem?]
+  exact get?_zero_childNodes_from_branch
 
 end FromBranch
 
