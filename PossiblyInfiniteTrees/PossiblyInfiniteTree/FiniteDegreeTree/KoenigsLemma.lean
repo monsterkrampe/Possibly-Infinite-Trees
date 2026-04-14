@@ -14,8 +14,8 @@ public import PossiblyInfiniteTrees.PossiblyInfiniteTree.FiniteDegreeTree.Basic
 /-!
 # König's Lemma
 
-This entire file is dedicated to proving König's Lemma on the `FiniteDegreeTree`.
-That is, we show that if every branch in a `FiniteDegreeTree` is finite, then there the set of `branches` is finite.
+This entire file is dedicated to proving [König's Lemma](https://en.wikipedia.org/wiki/K%C5%91nig's_lemma) on the `FiniteDegreeTree`.
+That is, we show that if every branch in a `FiniteDegreeTree` is finite, then there the set of `FiniteDegreeTree.branches` is finite.
 We show this result in `branches_finite_of_each_branch_finite`.
 -/
 

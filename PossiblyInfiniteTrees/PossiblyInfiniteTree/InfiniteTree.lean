@@ -151,7 +151,7 @@ This is equivalent to and actually just defined via mapping each child tree to i
 @[expose]
 def childNodes (t : InfiniteTreeSkeleton α) : InfiniteList α := t.childTrees.map root
 
-/-- When getting the nth child node, we can instead get the tree element at the singleton address `[n]`. -/
+/-- When getting the n-th child node, we can instead get the tree element at the singleton address `[n]`. -/
 @[simp, grind =]
 theorem get_childNodes {t : InfiniteTreeSkeleton α} {n : Nat} : t.childNodes.get n = t.get [n] := by simp [childNodes]
 
@@ -351,7 +351,7 @@ theorem generate_branch_mem_branches {start : β} {generator : β -> β} {mapper
 theorem head_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
   (generate_branch start generator mapper).head = (mapper start).root := by simp [generate_branch]
 
-/-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
 theorem get_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
   ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by simp [generate_branch]
 

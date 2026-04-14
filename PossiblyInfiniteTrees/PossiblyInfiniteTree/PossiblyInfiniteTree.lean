@@ -33,7 +33,7 @@ theorem InfiniteTreeSkeleton.no_orphans_closure {t : InfiniteTreeSkeleton (Optio
   | step t2 suf2 ih next_mem =>
     exact no_orph _ (InfiniteTreeSkeleton.IsSuffix_trans suf2 suf) ih _ next_mem
 
-/-- A `PossiblyInfiniteTree` is an `InfiniteTreeSkeleton` over `Option` that has `no_orphans` and also for each subtree, its `InfiniteTreeSkeleton.childNodes` have `InfiniteList.no_holes`. The last condition is necessary because we want the trees to be somewhat "compact", meaning that we want to forbid that e.g. the second child for a node is defined but the first child is none. Note that this would not be captured by the `InfiniteTreeSkeleto.no_orphans` property yet. -/
+/-- A `PossiblyInfiniteTree` is an `InfiniteTreeSkeleton` over `Option` that has `no_orphans` and also for each subtree, its `InfiniteTreeSkeleton.childNodes` have `InfiniteList.no_holes`. The last condition is necessary because we want the trees to be somewhat "compact", meaning that we want to forbid that e.g. the second child for a node is defined but the first child is none. Note that this would not be captured by the `InfiniteTreeSkeleton.no_orphans` property yet. -/
 structure PossiblyInfiniteTree (α : Type u) where
   infinite_tree : InfiniteTreeSkeleton (Option α)
   no_orphans : infinite_tree.no_orphans
@@ -355,7 +355,7 @@ def childNodes (t : PossiblyInfiniteTree α) : PossiblyInfiniteList α where
   infinite_list := t.infinite_tree.childNodes
   no_holes := t.no_holes_in_children _ InfiniteTreeSkeleton.IsSuffix_refl
 
-/-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
+/-- Getting the n-th `childNodes` is the root of the n-th `childTrees`. -/
 theorem get?_childNodes {t : PossiblyInfiniteTree α} :
     ∀ {n}, t.childNodes.get? n = (PossiblyInfiniteTreeWithRoot.opt_to_tree (t.childTrees.get? n)).root := by
   intro n; rw [get?_childTrees, PossiblyInfiniteTreeWithRoot.opt_to_tree_after_tree_to_opt]; simp [get?, PossiblyInfiniteList.get?, childNodes]
@@ -535,7 +535,7 @@ theorem tail_branchForAddress {t : PossiblyInfiniteTree α} {ns : InfiniteList N
 theorem branchForAddress_empty {α} {ns : InfiniteList Nat} : (@PossiblyInfiniteTree.empty α).branchForAddress ns = PossiblyInfiniteList.empty := by
   ext; simp
 
-/-- An infinite address is maximal in a `PossiblyInfiniteTree` if whenever the the tree element is `none` at the nth step of the address, then all of its siblings are also none (and it is enough to demand that the first sibling is none). -/
+/-- An infinite address is maximal in a `PossiblyInfiniteTree` if whenever the the tree element is `none` at the n-th step of the address, then all of its siblings are also none (and it is enough to demand that the first sibling is none). -/
 @[expose]
 def branchAddressIsMaximal (t : PossiblyInfiniteTree α) (ns : InfiniteList Nat) : Prop :=
   ∀ n, (t.branchForAddress ns).get? n.succ = none -> (t.drop (ns.take n)).childNodes.head = none
@@ -788,7 +788,7 @@ theorem head_generate_branch {start : Option β} {generator : β -> Option β} {
   rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_map, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_map]
   rfl
 
-/-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n =
     ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by

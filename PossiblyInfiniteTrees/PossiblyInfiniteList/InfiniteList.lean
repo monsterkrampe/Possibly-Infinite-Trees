@@ -10,7 +10,7 @@ module
 
 A note in the beginning:
 We mimic Mathlib's Stream' a lot here.
-Still I keep this separate to have full control about all the details.
+Still, we keep this separate to have full control about all the details.
 In the end, what we need should be simple enough.
 
 This file defines an `InfiniteList` as a function from the naturals into the desired type.
@@ -36,7 +36,7 @@ section Basic
 The essential functions on infinite lists, mainly get, drop, head, and tail.
 -/
 
-/-- Obtains the nth element from the list. -/
+/-- Obtains the n-th element from the list. -/
 def get (l : InfiniteList α) (n : Nat) : α := l n
 
 /-- Obtain another infinite list by dropping the first n elements from the current one. -/
@@ -92,7 +92,7 @@ theorem head_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).head = l.get n := 
 /-- Helper theorem stating the definition of tail. -/
 theorem tail_eq {l : InfiniteList α} : l.tail = fun n => l.get n.succ := by rfl
 
-/-- Getting the nth element from the tail equals getting the successor of n from the original list. -/
+/-- Getting the n-th element from the tail equals getting the successor of n from the original list. -/
 @[simp, grind =]
 theorem get_tail {l : InfiniteList α} : ∀ n, l.tail.get n = l.get n.succ := by intros; rfl
 
@@ -286,17 +286,17 @@ def iterate (start : α) (generator : α -> α) : InfiniteList α
 @[simp, grind =]
 theorem head_iterate {start : α} {generator : α -> α} : (iterate start generator).head = start := by rfl
 
-/-- When getting the successor of a number `n` from an interated list, we can instead get the nth element and apply the generator once mode. -/
+/-- When getting the successor of a number `n` from an interated list, we can instead get the n-th element and apply the generator once mode. -/
 theorem get_succ_iterate {start : α} {generator : α -> α} :
   ∀ n, (iterate start generator).get n.succ = generator ((iterate start generator).get n) := by intros; rfl
 
-/-- When getting the successor of a number `n` from an interated list, we can instead apply the generator once initially, then iterate and then get the nth element. -/
+/-- When getting the successor of a number `n` from an interated list, we can instead apply the generator once initially, then iterate and then get the n-th element. -/
 theorem get_succ_iterate' {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
   intro n; induction n with
   | zero => simp [get, iterate]
   | succ n ih => simp only [get, iterate] at *; rw [ih]
 
-/-- When getting the sum of two numbers `n+m` from an interated list, we can instead generate the nth value, and use that as the starting value for another m iterations. -/
+/-- When getting the sum of two numbers `n+m` from an interated list, we can instead generate the n-th value, and use that as the starting value for another m iterations. -/
 @[simp]
 theorem get_add_iterate {start : α} {generator : α -> α} : ∀ n m, (iterate start generator).get (n + m) = (iterate ((iterate start generator).get n) generator).get m := by
   intro n m; induction m generalizing n with
@@ -312,15 +312,15 @@ def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteL
 @[simp, grind =]
 theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : (generate start generator mapper).head = mapper start := by rfl
 
-/-- The nth element of a generated list is the mapped version of the nth element of the iterated "carrier" list. -/
+/-- The n-th element of a generated list is the mapped version of the n-th element of the iterated "carrier" list. -/
 theorem get_generate {start : α} {generator : α -> α} {mapper : α -> β} :
   ∀ n, (generate start generator mapper).get n = mapper ((iterate start generator).get n) := by intros; rfl
 
-/-- The successor of the nth element of a generated list can be seen as applying the mapper function after the generator function after taking the nth element from the iterated "carrier" list. -/
+/-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after taking the n-th element from the iterated "carrier" list. -/
 theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β} :
   ∀ n, (generate start generator mapper).get n.succ = mapper (generator ((iterate start generator).get n)) := by intros; rfl
 
-/-- The successor of the nth element of a generated list can be seen as taking the nth element after initializing the generation process with the generator function already applied once in the beginning. -/
+/-- The successor of the n-th element of a generated list can be seen as taking the n-th element after initializing the generation process with the generator function already applied once in the beginning. -/
 theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get n.succ = (generate (generator start) generator mapper).get n := by
   intros; simp [generate, get_succ_iterate']
@@ -357,7 +357,7 @@ theorem take_zero {l : InfiniteList α} : l.take 0 = [] := by rfl
 /-- When taking the successor of a number n, you get the head following by taking n from the tail. -/
 theorem take_succ {l : InfiniteList α} : ∀ n, l.take n.succ = l.head :: (l.tail.take n) := by intros; rfl
 
-/-- When taking the successor of a number n, you can take n and then also take the nth element. -/
+/-- When taking the successor of a number n, you can take n and then also take the n-th element. -/
 theorem take_succ' {l : InfiniteList α} : ∀ n, l.take n.succ = l.take n ++ [l.get n] := by
   intro n
   induction n generalizing l with

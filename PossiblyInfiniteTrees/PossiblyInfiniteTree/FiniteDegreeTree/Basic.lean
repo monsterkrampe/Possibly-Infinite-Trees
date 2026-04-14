@@ -149,9 +149,9 @@ namespace FiniteDegreeTreeWithRoot
 
 For the `FiniteDegreeTreeWithRoot` we mainly provide some functions to convert `FiniteDegreeTree` to and from `Option FiniteDegreeTreeWithRoot`. Clearly, if a `FiniteDegreeTree` has a non-none root, we can convert it directly into a `FiniteDegreeTreeWithRoot`, otherwise, we simply convert it to `none`. Also in the other direction, none can just be converted to `PossiblyInfiniteTree.empty` and any `FiniteDegreeTreeWithRoot` is already a `FiniteDegreeTree`.
 
-So far this is similar to `PossiblyInfiniteTreeWithRoot` and mainly implemented using its existing methods.
+So far this is similar to `PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot` and mainly implemented using its existing methods.
 For this purpose, we also provide methods `from_possibly_infinite` and `to_possibly_infinite` that allow to convert
-between `FiniteDegreeTreeWithRoot` and `PossiblyInfiniteTreeWithRoot`.
+between `FiniteDegreeTreeWithRoot` and `PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot`.
 -/
 
 def from_possibly_infinite (t : PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot α) (fin : t.val.finitely_many_children) : FiniteDegreeTreeWithRoot α :=
@@ -376,7 +376,7 @@ This is equivalent to mapping each child tree to its root.
 /-- The `childNodes` are `PossiblyInfiniteTree.childNodes`. -/
 def childNodes (t : FiniteDegreeTree α) : List α := t.tree.childNodes.toList_of_finite (by rcases t.finitely_many_children _ PossiblyInfiniteTree.IsSuffix_refl with ⟨k, fin⟩; exists k; rw [PossiblyInfiniteTree.get?_childNodes, ← PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff]; exact fin)
 
-/-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
+/-- Getting the n-th `childNodes` is the root of the n-th `childTrees`. -/
 theorem get?_childNodes {t : FiniteDegreeTree α} : ∀ {n : Nat}, t.childNodes[n]? = (FiniteDegreeTreeWithRoot.opt_to_tree t.childTrees[n]?).root := by
   simp [childNodes, PossiblyInfiniteTree.get?_childNodes, get?]
 
@@ -398,7 +398,7 @@ theorem childNodes_eq {t : FiniteDegreeTree α} : t.childNodes = t.childTrees.ma
 @[simp, grind =]
 theorem length_childNodes {t : FiniteDegreeTree α} : t.childNodes.length = t.childTrees.length := by simp [childNodes_eq]
 
-/-- Getting the nth `childNodes` is the root of the nth `childTrees`. -/
+/-- Getting the n-th `childNodes` is the root of the n-th `childTrees`. -/
 theorem get_childNodes {t : FiniteDegreeTree α} :
     ∀ n, (lt : n < t.childNodes.length) -> t.childNodes[n] = (t.childTrees[n]'(by rw [← length_childNodes]; exact lt)).val.root := by
   intro n lt; rw [List.getElem_eq_getElem?_get, Option.some_get, get?_childNodes]; simp
@@ -659,7 +659,7 @@ theorem head_generate_branch {start : Option β} {generator : β -> Option β} {
     start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) :=
   PossiblyInfiniteTree.head_generate_branch
 
-/-- Getting the nth element from a `generate_branch` result is the root of the nth generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n =
     ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by

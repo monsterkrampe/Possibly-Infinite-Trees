@@ -41,7 +41,7 @@ section Basic
 The essential functions on infinite lists, mainly get, drop, head, and tail.
 -/
 
-/-- Obtains the nth element from the list. -/
+/-- Obtains the n-th element from the list. -/
 @[expose]
 def get? (l : PossiblyInfiniteList α) (n : Nat) : Option α := l.infinite_list.get n
 
@@ -121,7 +121,7 @@ theorem head_mem {l : PossiblyInfiniteList α} : ∀ h ∈ l.head, h ∈ l := by
 @[simp, grind =]
 theorem head_drop {l : PossiblyInfiniteList α} : ∀ {n}, (l.drop n).head = l.get? n := InfiniteList.head_drop
 
-/-- Getting the nth element from the tail equals getting the successor of n from the original list. -/
+/-- Getting the n-th element from the tail equals getting the successor of n from the original list. -/
 @[simp, grind =]
 theorem get?_tail {l : PossiblyInfiniteList α} : ∀ n, l.tail.get? n = l.get? n.succ := InfiniteList.get_tail
 
@@ -295,8 +295,8 @@ def attach (l : PossiblyInfiniteList α) : PossiblyInfiniteList l.Element where
   infinite_list := l.infinite_list.attach.map (fun e => e.val.attach.map (fun v => ⟨v.val, by rw [mem_iff]; rcases e.property with ⟨n, eq⟩; exists n; simp only [get?]; rw [eq]; exact v.property⟩))
   no_holes := by intro n; simpa using l.no_holes n
 
-/-- Calling `get` after `attach` returns the correct element with its membership proof. -/
-theorem val_get_attach {l : PossiblyInfiniteList α} :
+/-- Calling `get?` after `attach` returns the correct element with its membership proof. -/
+theorem val_get?_attach {l : PossiblyInfiniteList α} :
   ∀ {n}, (l.attach.get? n).map (fun e => e.val) = l.get? n := by intros; simp [get?, attach]
 
 end Attach
@@ -324,11 +324,11 @@ def generate (start : Option α) (generator : α -> Option α) (mapper : α -> �
 theorem head_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
   (generate start generator mapper).head = start.map mapper := InfiniteList.head_generate
 
-/-- The nth element of a generated list is the mapped version of the nth element of the iterated "carrier" list. -/
+/-- The n-th element of a generated list is the mapped version of the n-th element of the iterated "carrier" list. -/
 theorem get?_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
   ∀ n, (generate start generator mapper).get? n = ((InfiniteList.iterate start (·.bind generator)).get n).map mapper := InfiniteList.get_generate
 
-/-- The successor of the nth element of a generated list can be seen as applying the mapper function after the generator function after taking the nth element from the iterated "carrier" list. -/
+/-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after taking the n-th element from the iterated "carrier" list. -/
 theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get? n.succ = (((InfiniteList.iterate start (·.bind generator)).get n).bind generator).map mapper :=
   InfiniteList.get_succ_generate
@@ -419,7 +419,7 @@ theorem map_finite_of_finite {l : PossiblyInfiniteList α} {f : α -> β} : l.fi
 @[grind <-]
 theorem finite_empty {α} : (@PossiblyInfiniteList.empty α).finite := by exists 0; simp
 
-/-- The nth element in the transformed list is the nth element from the original list. -/
+/-- The n-th element in the transformed list is the n-th element from the original list. -/
 @[simp, grind =]
 theorem getElem?_toList_of_finite {l : PossiblyInfiniteList α} {fin : l.finite} : ∀ {n}, (l.toList_of_finite fin)[n]? = l.get? n := by
   have : ∀ n m, (toList_of_finite.loop l fin m)[n]? = l.get? (m + n) := by
@@ -485,7 +485,7 @@ def from_list (l : List α) : PossiblyInfiniteList α where
   infinite_list := fun n => l[n]?
   no_holes := by intro n; simp only [InfiniteList.compute_get]; simp only [List.getElem?_eq_none_iff]; exact Nat.le_succ_of_le
 
-/-- After building from a `List`, the nth elements are the same. -/
+/-- After building from a `List`, the n-th elements are the same. -/
 @[simp, grind =]
 theorem get?_from_list {l : List α} : ∀ {n}, (from_list l).get? n = l[n]? := by intros; unfold from_list get?; rw [InfiniteList.compute_get]
 
