@@ -647,7 +647,10 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
     (isSome_start : start.isSome) :
     generate_branch start generator mapper ∈ (mapper (start.get isSome_start)).val.branches := by
   apply PossiblyInfiniteTree.generate_branch_mem_branches
-  . grind [childTrees, FiniteDegreeTreeWithRoot.to_possibly_infinite]
+  . intro b b' b'_mem
+    specialize next_is_child b b' b'_mem
+    rw [mem_childTrees_iff] at next_is_child
+    exact next_is_child
   . intro b eq_none
     specialize maximal b eq_none
     simp only [childTrees, List.map_eq_nil_iff, List.attach_eq_nil_iff, PossiblyInfiniteList.toList_of_finite_empty_iff] at maximal
