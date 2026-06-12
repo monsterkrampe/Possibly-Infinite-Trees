@@ -324,14 +324,21 @@ def generate (start : Option α) (generator : α -> Option α) (mapper : α -> �
 theorem head_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
   (generate start generator mapper).head = start.map mapper := InfiniteList.head_generate
 
-/-- The n-th element of a generated list is the mapped version of the n-th element of the iterated "carrier" list. -/
+/-- The n-th element of a generated list results from applying the mapper after the n-th repetition of the generator function. -/
 theorem get?_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
-  ∀ n, (generate start generator mapper).get? n = ((InfiniteList.iterate start (·.bind generator)).get n).map mapper := InfiniteList.get_generate
+  ∀ n, (generate start generator mapper).get? n = ((·.bind generator).repeat_fun n start).map mapper := InfiniteList.get_generate
 
-/-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after taking the n-th element from the iterated "carrier" list. -/
+/-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after the n-th repetition of the generator function. -/
 theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
-    ∀ n, (generate start generator mapper).get? n.succ = (((InfiniteList.iterate start (·.bind generator)).get n).bind generator).map mapper :=
+    ∀ n, (generate start generator mapper).get? n.succ =
+      (((·.bind generator).repeat_fun n start).bind generator).map mapper :=
   InfiniteList.get_succ_generate
+
+/-- The successor of the n-th element of a generated list can be seen as taking the n-th element after initializing the generation process with the generator function already applied once in the beginning. -/
+theorem get?_succ_generate' {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
+    ∀ n, (generate start generator mapper).get? n.succ =
+      (generate (start.bind generator) generator mapper).get? n :=
+  InfiniteList.get_succ_generate'
 
 /-- The tail of a generated list is the list generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
