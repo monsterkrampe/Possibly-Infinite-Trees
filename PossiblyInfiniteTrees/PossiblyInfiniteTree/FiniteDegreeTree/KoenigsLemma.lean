@@ -122,8 +122,8 @@ public theorem branches_finite_of_each_branch_finite (t : FiniteDegreeTree α) :
   induction n with
   | zero => simp only [← PossiblyInfiniteList.head_eq, branch, head_generate_branch] at eq_none; grind
   | succ n ih =>
-    simp only [branch, get?_generate_branch, Option.map_eq_none_iff, PossiblyInfiniteList.get?_succ_generate, Option.bind_eq_none_iff] at eq_none
-    simp only [branch, get?_generate_branch, Option.map_eq_none_iff, PossiblyInfiniteList.get?_generate] at ih
+    simp only [branch, get?_succ_generate_branch, Option.map_eq_none_iff, Option.bind_eq_none_iff] at eq_none
+    simp only [branch, get?_generate_branch, Option.map_eq_none_iff] at ih
     rw [imp_false, ← ne_eq, Option.ne_none_iff_exists] at ih
     rcases ih with ⟨x, x_eq⟩
     specialize eq_none x (Eq.symm x_eq)

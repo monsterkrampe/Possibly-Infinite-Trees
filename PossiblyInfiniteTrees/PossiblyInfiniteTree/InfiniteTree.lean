@@ -335,7 +335,7 @@ theorem generate_branch_mem_branches {start : β} {generator : β -> β} {mapper
     | succ n ih =>
       rw [InfiniteList.take_succ', ← drop_drop, ← ih]
       simp only [trees, InfiniteList.get_succ_generate]
-      have eq_child := Classical.choose_spec (next_is_child ((InfiniteList.iterate start generator).get n))
+      have eq_child := Classical.choose_spec (next_is_child (generator.repeat_fun n start))
       rw [← eq_child]
       rw [get_childTrees]
       simp [addresses, InfiniteList.get_generate]
@@ -351,9 +351,13 @@ theorem generate_branch_mem_branches {start : β} {generator : β -> β} {mapper
 theorem head_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
   (generate_branch start generator mapper).head = (mapper start).root := by simp [generate_branch]
 
-/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the tree resulting from applying the mapper function after repeating the generator n times. -/
 theorem get_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
-  ∀ n, (generate_branch start generator mapper).get n = ((InfiniteList.generate start generator mapper).get n).root := by simp [generate_branch]
+  ∀ n, (generate_branch start generator mapper).get n = (mapper (generator.repeat_fun n start)).root := by simp [generate_branch, InfiniteList.get_generate]
+
+/-- The successor of the n-th element of a `generate_branch` result can be seen as taking the root after applying the mapper function after the generator function after the n-th repetition of the generator function. -/
+theorem get_succ_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} :
+  ∀ n, (generate_branch start generator mapper).get n.succ = (mapper (generator (generator.repeat_fun n start))).root := by simp [generate_branch, InfiniteList.get_succ_generate]
 
 /-- The `InfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate_branch {start : β} {generator : β -> β} {mapper : β -> InfiniteTreeSkeleton α} : (generate_branch start generator mapper).tail = generate_branch (generator start) generator mapper := by simp [generate_branch, InfiniteList.tail_generate]

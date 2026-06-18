@@ -662,11 +662,16 @@ theorem head_generate_branch {start : Option β} {generator : β -> Option β} {
     start.map (fun s => (mapper s).val.root.get (by rw [Option.isSome_iff_ne_none]; exact (mapper s).property)) :=
   PossiblyInfiniteTree.head_generate_branch
 
-/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the tree resulting from applying the mapper function after repeating the generator n times. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n =
-    ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
-  intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, PossiblyInfiniteList.get?_generate, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
+    (((·.bind generator).repeat_fun n start).map mapper).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
+  intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_generate_branch, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
+
+/-- The successor of the n-th element of a `generate_branch` result can be seen as taking the root after applying the mapper function after the generator function after the n-th repetition of the generator function. -/
+theorem get?_succ_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :
+  ∀ n, (generate_branch start generator mapper).get? n.succ =
+  ((((·.bind generator).repeat_fun n start).bind generator).map mapper).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by intro n; simp only [generate_branch, PossiblyInfiniteTree.get?_succ_generate_branch, Option.map_map, FiniteDegreeTreeWithRoot.to_possibly_infinite]; rfl
 
 /-- The `PossiblyInfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> FiniteDegreeTreeWithRoot α} :

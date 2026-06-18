@@ -778,7 +778,7 @@ theorem generate_branch_mem_branches {start : Option β} {generator : β -> Opti
     rw [PossiblyInfiniteList.head_eq, get?_childNodes, ← PossiblyInfiniteTreeWithRoot.opt_to_tree_none_iff, ← PossiblyInfiniteList.head_eq, ← PossiblyInfiniteList.empty_iff_head_none]
     rw [Option.bind_eq_none_iff]
     intro eq_none
-    cases b_eq : (InfiniteList.iterate start fun x => x.bind generator).get n <;> (simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]; grind)
+    cases b_eq : (·.bind generator).repeat_fun n start <;> (simp only [PossiblyInfiniteTreeWithRoot.opt_to_tree]; grind)
 
 /-- The `PossiblyInfiniteList.head` of `generate_branch` is the `root` of the first tree. -/
 theorem head_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
@@ -788,11 +788,16 @@ theorem head_generate_branch {start : Option β} {generator : β -> Option β} {
   rw [PossiblyInfiniteList.head_eq, PossiblyInfiniteList.get?_map, ← PossiblyInfiniteList.head_eq, PossiblyInfiniteList.head_generate, Option.map_map]
   rfl
 
-/-- Getting the n-th element from a `generate_branch` result is the root of the n-th generated tree. -/
+/-- Getting the n-th element from a `generate_branch` result is the root of the tree resulting from applying the mapper function after repeating the generator n times. -/
 theorem get?_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
     ∀ n, (generate_branch start generator mapper).get? n =
-    ((PossiblyInfiniteList.generate start generator mapper).get? n).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
-  simp [generate_branch]
+    (((·.bind generator).repeat_fun n start).map mapper).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by
+  simp [generate_branch, PossiblyInfiniteList.get?_generate]
+
+/-- The successor of the n-th element of a `generate_branch` result can be seen as taking the root after applying the mapper function after the generator function after the n-th repetition of the generator function. -/
+theorem get?_succ_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
+  ∀ n, (generate_branch start generator mapper).get? n.succ =
+  ((((·.bind generator).repeat_fun n start).bind generator).map mapper).map (fun t => t.val.root.get (by rw [Option.isSome_iff_ne_none]; exact t.property)) := by simp [generate_branch, PossiblyInfiniteList.get?_succ_generate]
 
 /-- The `PossiblyInfiniteList.tail` of `generate_branch` is the branch generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate_branch {start : Option β} {generator : β -> Option β} {mapper : β -> PossiblyInfiniteTreeWithRoot α} :
