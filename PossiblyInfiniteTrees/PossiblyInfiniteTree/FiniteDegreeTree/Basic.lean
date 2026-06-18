@@ -165,7 +165,7 @@ def opt_to_tree (opt : Option (FiniteDegreeTreeWithRoot α)) : FiniteDegreeTree 
   finitely_many_children := by
     cases opt with
     | none => simpa using PossiblyInfiniteTree.finitely_many_children_empty
-    | some t => simpa using t.val.finitely_many_children
+    | some t => simpa [to_possibly_infinite] using t.val.finitely_many_children
 
 def tree_to_opt (t : FiniteDegreeTree α) : Option (FiniteDegreeTreeWithRoot α) :=
   (PossiblyInfiniteTree.PossiblyInfiniteTreeWithRoot.tree_to_opt t.tree).attach.map (fun t' =>
@@ -503,7 +503,7 @@ theorem mem_rec
     rcases suffix with ⟨ns, suffix⟩
     apply step (t.drop ns) (t.IsSuffix_drop ns)
     . rcases ih with ⟨r, r_mem, ih⟩; rw [← suffix] at r_mem; exists r, r_mem
-    . rw [← suffix] at c_mem; simpa [childNodes] using c_mem
+    . rw [← suffix] at c_mem; simpa [childNodes, drop] using c_mem
 
 end ElementRecursor
 
