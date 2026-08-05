@@ -80,6 +80,11 @@ theorem get_drop {l : InfiniteList α} {n i : Nat} : (l.drop n).get i = l.get (n
 @[simp, grind =]
 theorem drop_zero {l : InfiniteList α} : l.drop 0 = l := by ext; rw [get_drop, Nat.zero_add]
 
+/-- Two calls to drop can be combined. -/
+@[simp, grind =]
+theorem drop_drop {l : InfiniteList α} {n n' : Nat} :
+  (l.drop n).drop n' = l.drop (n + n') := by apply ext; intro _; simp only [get_drop]; rw [Nat.add_assoc]
+
 /-- The `head` is the 0-th element. This is the definition. -/
 theorem head_eq {l : InfiniteList α} : l.head = l.get 0 := by rfl
 

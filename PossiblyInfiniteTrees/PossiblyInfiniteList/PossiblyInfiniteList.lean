@@ -109,6 +109,11 @@ theorem get?_drop {l : PossiblyInfiniteList α} {n i : Nat} : (l.drop n).get? i 
 theorem drop_zero {l : PossiblyInfiniteList α} : l.drop 0 = l := by
   rw [PossiblyInfiniteList.mk.injEq]; exact InfiniteList.drop_zero
 
+/-- Two calls to drop can be combined. -/
+@[simp, grind =]
+theorem drop_drop {l : PossiblyInfiniteList α} {n n' : Nat} :
+  (l.drop n).drop n' = l.drop (n + n') := by rw [PossiblyInfiniteList.mk.injEq]; exact InfiniteList.drop_drop
+
 /-- The head is the same as getting the element at index zero. -/
 theorem head_eq {l : PossiblyInfiniteList α} : l.head = l.get? 0 := by unfold head; rw [InfiniteList.head_eq]; rfl
 
