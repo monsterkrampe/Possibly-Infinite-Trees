@@ -31,8 +31,7 @@ that the generated `InfiniteList` is indeed a branch in the `InfiniteTreeSkeleto
 public section
 
 /-- An `InfiniteTreeSkeleton` is a function from a list of naturals (representing an address in the tree) into the desired type. -/
-@[expose]
-def InfiniteTreeSkeleton (α : Type u) := (List Nat) -> α
+abbrev InfiniteTreeSkeleton (α : Type u) := (List Nat) -> α
 
 namespace InfiniteTreeSkeleton
 
@@ -225,8 +224,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
-@[expose]
-def Element (t : InfiniteTreeSkeleton α) := { e : α // e ∈ t }
+abbrev Element (t : InfiniteTreeSkeleton α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
 theorem mem_rec
@@ -238,7 +236,7 @@ theorem mem_rec
     motive a := by
   rcases a.property with ⟨ns, a_mem⟩
   let rev_ns := ns.reverse
-  have a_mem : a = ⟨t.get rev_ns.reverse, t.get_mem⟩ := by simp only [rev_ns, List.reverse_reverse, a_mem]; rfl
+  have a_mem : a = ⟨t.get rev_ns.reverse, t.get_mem⟩ := by simp only [rev_ns, List.reverse_reverse, a_mem]
   induction eq : rev_ns generalizing a ns with
   | nil => rw [a_mem, eq, List.reverse_nil]; exact root
   | cons hd tl ih =>

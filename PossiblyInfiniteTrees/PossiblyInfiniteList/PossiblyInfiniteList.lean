@@ -216,8 +216,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A list `Element` is a Subtype featuring a proof of being a list member. -/
-@[expose]
-def Element (l : PossiblyInfiniteList α) := { e : α // e ∈ l }
+abbrev Element (l : PossiblyInfiniteList α) := { e : α // e ∈ l }
 
 /-- A recursor for proving properties about list members via induction. -/
 theorem mem_rec
@@ -348,7 +347,7 @@ theorem get?_succ_generate' {start : Option α} {generator : α -> Option α} {m
 /-- The tail of a generated list is the list generated when applying the generator function once on the starting element before the actual generation. -/
 theorem tail_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
     (generate start generator mapper).tail = generate (start.bind generator) generator mapper := by
-  simp only [generate, tail, mk.injEq]
+  rw [mk.injEq]; simp only [generate, tail]
   exact InfiniteList.tail_generate
 
 end Generate

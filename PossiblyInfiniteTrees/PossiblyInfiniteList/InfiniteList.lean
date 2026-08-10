@@ -25,8 +25,7 @@ Furthermore, we offer a `generate` function that can build an infinite list from
 public section
 
 /-- An `InfiniteList` is defined as a function from the naturals into the desired type. -/
-@[expose]
-def InfiniteList (α : Type u) := Nat -> α
+abbrev InfiniteList (α : Type u) := Nat -> α
 
 namespace InfiniteList
 

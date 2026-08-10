@@ -23,6 +23,7 @@ The number of children might grow arbitrarily along the tree as long as it is fi
 public section
 
 /-- A `PossiblyInfiniteTree` has `finitely_many_children` if for each subtree, the list of `PossiblyInfiniteTree.childTrees` is `PossiblyInfiniteList.finite`. -/
+@[implicit_reducible]
 def PossiblyInfiniteTree.finitely_many_children (t : PossiblyInfiniteTree α) : Prop :=
   ∀ subtree, subtree <:+ t -> subtree.childTrees.finite
 
