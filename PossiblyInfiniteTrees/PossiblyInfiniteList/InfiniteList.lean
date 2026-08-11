@@ -25,7 +25,8 @@ Furthermore, we offer a `generate` function that can build an infinite list from
 public section
 
 /-- An `InfiniteList` is defined as a function from the naturals into the desired type. -/
-abbrev InfiniteList (α : Type u) := Nat -> α
+@[expose, implicit_reducible]
+def InfiniteList (α : Type u) := Nat -> α
 
 namespace InfiniteList
 
@@ -199,8 +200,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A list `Element` is a Subtype featuring a proof of being a list member. -/
-@[expose]
-def Element (l : InfiniteList α) := { e : α // e ∈ l }
+abbrev Element (l : InfiniteList α) := { e : α // e ∈ l }
 
 /-- A recursor for proving properties about list members (`Element`s) via induction. -/
 theorem mem_rec
@@ -211,7 +211,7 @@ theorem mem_rec
     (a : Element l) :
     motive a := by
   rcases a.property with ⟨n, a_mem⟩
-  have a_mem : a = ⟨l.get n, l.get_mem⟩ := by simp only [a_mem]; rfl
+  have a_mem : a = ⟨l.get n, l.get_mem⟩ := by simp only [a_mem]
   induction n generalizing a with
   | zero => rw [a_mem]; exact head
   | succ n ih =>

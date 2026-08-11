@@ -458,8 +458,7 @@ Note that for using this coveniently, the goal needs to expressed (rewritten) us
 -/
 
 /-- A tree `Element` is a Subtype featuring a proof of being a tree member. -/
-@[expose]
-def Element (t : PossiblyInfiniteTree α) := { e : α // e ∈ t }
+abbrev Element (t : PossiblyInfiniteTree α) := { e : α // e ∈ t }
 
 /-- A recursor for proving properties about tree members (`Element`s) via induction. -/
 theorem mem_rec

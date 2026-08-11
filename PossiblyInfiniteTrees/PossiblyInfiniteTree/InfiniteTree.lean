@@ -31,7 +31,8 @@ that the generated `InfiniteList` is indeed a branch in the `InfiniteTreeSkeleto
 public section
 
 /-- An `InfiniteTreeSkeleton` is a function from a list of naturals (representing an address in the tree) into the desired type. -/
-abbrev InfiniteTreeSkeleton (α : Type u) := (List Nat) -> α
+@[expose, implicit_reducible]
+def InfiniteTreeSkeleton (α : Type u) := (List Nat) -> α
 
 namespace InfiniteTreeSkeleton
 
