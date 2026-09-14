@@ -374,6 +374,16 @@ theorem take_add {l : InfiniteList α} : ∀ n m, l.take (n + m) = l.take n ++ (
   | zero => simp [take_zero]
   | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
 
+/-- `take` contains all elements before the target length. -/
+theorem get_mem_take_of_lt {l : InfiniteList α} : ∀ n m, n < m -> l.get n ∈ l.take m := by
+  intro n m lt
+  suffices ∀ (k : Nat), l.get n ∈ l.take (n + k.succ) by
+    rcases Nat.exists_eq_add_of_lt lt with ⟨k, lt⟩
+    rw [lt]; apply this
+  intro k
+  rw [Nat.add_succ, ← Nat.succ_add, take_add]
+  apply List.mem_append_left; rw [take_succ']; simp
+
 end Take
 
 end InfiniteList
