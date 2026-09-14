@@ -510,5 +510,25 @@ theorem toList_of_finite_after_from_list {l : List α} : (from_list l).toList_of
 
 end FromList
 
+section FromInfiniteList
+
+/-!
+## Converting a InfiniteList into a PossiblyInfiniteList
+
+We can always convert an `InfiniteList` into a `PossiblyInfiniteList` in the obvious way.
+-/
+
+/-- Turns an `InfiniteList` into a `PossiblyInfiniteList`. -/
+def from_infiniteList (l : InfiniteList α) : PossiblyInfiniteList α where
+  infinite_list := l.map .some
+  no_holes := by intro _; simp
+
+/-- After converting an `InfiniteList`, the n-th elements are the same. -/
+@[simp, grind =]
+theorem get?_from_infiniteList {l : InfiniteList α} : ∀ {n}, (from_infiniteList l).get? n = some (l.get n) := by
+  intros; unfold from_infiniteList get?; simp
+
+end FromInfiniteList
+
 end PossiblyInfiniteList
 
