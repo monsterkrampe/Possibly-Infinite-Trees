@@ -6,6 +6,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 module
 
 public import BasicLeanDatastructures.Function.Repetition
+public import BasicLeanDatastructures.List.Basic
+public import BasicLeanDatastructures.List.NonEmpty
 
 /-!
 # InfiniteList
@@ -107,6 +109,13 @@ theorem get_tail {l : InfiniteList α} : ∀ n, l.tail.get n = l.get n.succ := b
 @[simp, grind =]
 theorem tail_drop {l : InfiniteList α} : ∀ {n}, (l.drop n).tail = l.drop n.succ := by
   intros; unfold tail; ext; simp only [get_drop]; simp only [get]; rw [Nat.add_succ, Nat.succ_add]
+
+/-- Dropping n.succ elements means dropping n elements from the tail. -/
+theorem drop_succ {l : InfiniteList α} {n : Nat} : l.drop n.succ = l.tail.drop n := by ext; grind
+
+/-- Dropping one element yields the tail. -/
+@[simp, grind =]
+theorem drop_one {l : InfiniteList α} : l.drop 1 = l.tail := by ext; rw [get_drop, get_tail, Nat.add_comm]
 
 /-- Getting the first element on cons is the new head. -/
 @[simp, grind =]
@@ -357,6 +366,10 @@ theorem length_take {l : InfiniteList α} : ∀ {n}, (l.take n).length = n := by
 @[simp, grind =]
 theorem take_zero {l : InfiniteList α} : l.take 0 = [] := by rfl
 
+/-- When taking one, you get the head. -/
+@[simp, grind =]
+theorem take_one {l : InfiniteList α} : l.take 1 = [l.head] := by rfl
+
 /-- When taking the successor of a number n, you get the head following by taking n from the tail. -/
 theorem take_succ {l : InfiniteList α} : ∀ n, l.take n.succ = l.head :: (l.tail.take n) := by intros; rfl
 
@@ -384,7 +397,128 @@ theorem get_mem_take_of_lt {l : InfiniteList α} : ∀ n m, n < m -> l.get n ∈
   rw [Nat.add_succ, ← Nat.succ_add, take_add]
   apply List.mem_append_left; rw [take_succ']; simp
 
+/--
+A taken list is a prefix of another taken list if the first contains at most the same number of element.
+This is inspired by List.prefix_take_le_iff.
+-/
+theorem prefix_take_le_iff {l : InfiniteList α} {n m : Nat} : l.take n <+: l.take m ↔ n ≤ m := by
+  induction n generalizing m l with
+  | zero => simp
+  | succ n ih =>
+    cases m with
+    | zero => simp [take_succ]
+    | succ m =>
+      simp only [take_succ, List.cons_prefix_cons, true_and]
+      rw [Nat.succ_le_succ_iff]
+      exact ih
+
 end Take
+
+section FromNonEmptyLists
+
+/-!
+## Construct InfiniteList from InfiniteList of NonEmptyLists
+
+If we have an infinite list of `NonEmptyList`s, we can turn them into a single infinite list.
+
+We build the infinite list from an infinite list of finite lists by keeping an infinite backlog of the untouched lists and keep track of a current working list where we pick the first element in each step. Once we run out of elements, we pick the next list from the backlog instead.
+-/
+
+abbrev fromNonEmptyLists.GeneratorValue (α : Type u) := InfiniteList (NonEmptyList α) × (NonEmptyList α)
+
+def fromNonEmptyLists.start (ls : InfiniteList (NonEmptyList α)) : GeneratorValue α := (ls.tail, ls.head)
+def fromNonEmptyLists.generator : GeneratorValue α -> GeneratorValue α
+| (ls, .singleton _) => (ls.tail, ls.head)
+| (ls, .cons _ (a' :: as)) => (ls, .cons a' as)
+def fromNonEmptyLists.mapper (gen : GeneratorValue α) : α := gen.snd.head
+
+def fromNonEmptyLists (ls : InfiniteList (NonEmptyList α)) : InfiniteList α :=
+  generate (fromNonEmptyLists.start ls) fromNonEmptyLists.generator fromNonEmptyLists.mapper
+
+/-- The head of the generated list is the head of the first finite list. -/
+@[simp, grind =]
+theorem fromNonEmptyLists_head {ls : InfiniteList (NonEmptyList α)} : (fromNonEmptyLists ls).head = ls.head.head := by
+  simp [fromNonEmptyLists, fromNonEmptyLists.mapper, fromNonEmptyLists.start]
+
+/-- If the first list is singleton, the tail of the generated list just drops this first list entirely. -/
+@[simp, grind =]
+theorem fromNonEmptyLists_tail_of_singleton {ls : InfiniteList (NonEmptyList α)} {a : α} :
+    (fromNonEmptyLists (cons (.singleton a) ls)).tail = fromNonEmptyLists ls := by
+  simp only [fromNonEmptyLists, tail_generate]; congr
+
+/-- If the first list is not a singleton, the tail drops the head from the first finite list but keeps the rest. -/
+@[simp, grind =]
+theorem fromNonEmptyLists_tail_of_cons {ls : InfiniteList (NonEmptyList α)} {a : α} {as : NonEmptyList α} :
+    (fromNonEmptyLists (cons (.cons' a as) ls)).tail = fromNonEmptyLists (cons as ls) := by
+  simp only [fromNonEmptyLists, tail_generate]; congr
+
+/-- If we take exactly the number of elements of the first finite list from the generated list, we get exactly the first finite list. -/
+theorem fromNonEmptyLists_take_length_cons {ls : InfiniteList (NonEmptyList α)} {as : NonEmptyList α} :
+    (fromNonEmptyLists (cons as ls)).take as.toList.length = as.toList := by
+  induction as using NonEmptyList.rec' with
+  | singleton a => simp
+  | cons' a as ih =>
+    rw [NonEmptyList.toList_cons', List.length_cons, take_succ, List.cons_eq_cons]; constructor
+    . simp
+    . simpa using ih
+
+/-- If we take exactly the number of elements of the first finite list from the generated list, we get exactly the first finite list. -/
+theorem fromNonEmptyLists_take_length_head {ls : InfiniteList (NonEmptyList α)} :
+    (fromNonEmptyLists ls).take ls.head.toList.length = ls.head.toList := by
+  rw [ls.cons_head_tail]
+  simp only [head_cons]
+  exact fromNonEmptyLists_take_length_cons
+
+/-- If we drop exactly the number of elements of the first finite list from the generated list, we essentially drop the first finite list. -/
+theorem fromNonEmptyLists_drop_length_cons {ls : InfiniteList (NonEmptyList α)} {as : NonEmptyList α} :
+    (fromNonEmptyLists (cons as ls)).drop as.toList.length = fromNonEmptyLists ls := by
+  induction as using NonEmptyList.rec' with
+  | singleton a => simp
+  | cons' a as ih =>
+    rw [NonEmptyList.toList_cons', List.length_cons, drop_succ]
+    simpa using ih
+
+/-- If we drop exactly the number of elements of the first finite list from the generated list, we essentially drop the first finite list. -/
+theorem fromNonEmptyLists_drop_length_head {ls : InfiniteList (NonEmptyList α)} :
+    (fromNonEmptyLists ls).drop ls.head.toList.length = fromNonEmptyLists ls.tail := by
+  rw [ls.cons_head_tail]
+  simp only [head_cons]
+  exact fromNonEmptyLists_drop_length_cons
+
+/-- Dropping any number of finite lists corresponds to dropping the combined length from the generated infinite list. -/
+theorem fromNonEmptyLists_drop_eq {ls : InfiniteList (NonEmptyList α)} : ∀ {n},
+    fromNonEmptyLists (ls.drop n) = (fromNonEmptyLists ls).drop ((ls.take n).flatMap NonEmptyList.toList).length := by
+  intro n; induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [← tail_drop, take_succ', List.flatMap_append, List.flatMap_singleton, List.length_append, ← drop_drop]
+    rw [← ih, ← head_drop, fromNonEmptyLists_drop_length_head]
+
+/-- Taking any number of finite lists corresponds to taking the combined length from the generated infinite list. -/
+theorem fromNonEmptyLists_take_eq {ls : InfiniteList (NonEmptyList α)} : ∀ {n},
+    (ls.take n).flatMap NonEmptyList.toList = (fromNonEmptyLists ls).take ((ls.take n).flatMap NonEmptyList.toList).length := by
+  intro n; induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [take_succ', List.flatMap_append, List.flatMap_singleton, List.length_append, take_add]
+    apply List.append_eq_append_of_parts_eq _ _ _ _ ih
+    rw [← head_drop, ← fromNonEmptyLists_drop_eq, fromNonEmptyLists_take_length_head]
+
+/-- Taking any number of elements from the generated list always yields a prefix of the concatenation of some finite number of finite lists. -/
+theorem fromNonEmptyLists_isContained {ls : InfiniteList (NonEmptyList α)} : ∀ n, ∃ m,
+    (fromNonEmptyLists ls).take n <+: (ls.take m).flatMap NonEmptyList.toList := by
+  intro n; induction n with
+  | zero => exists 0; simp
+  | succ n ih =>
+    rcases ih with ⟨m, ih⟩
+    exists m.succ
+    rw [fromNonEmptyLists_take_eq, prefix_take_le_iff] at ih
+    rw [fromNonEmptyLists_take_eq, prefix_take_le_iff]
+    suffices ((ls.take m).flatMap NonEmptyList.toList).length < ((ls.take m.succ).flatMap NonEmptyList.toList).length by grind
+    rw [take_succ']
+    simp [NonEmptyList.toList]
+
+end FromNonEmptyLists
 
 end InfiniteList
 
