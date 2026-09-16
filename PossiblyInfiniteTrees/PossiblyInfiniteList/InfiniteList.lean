@@ -6,8 +6,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 module
 
 public import BasicLeanDatastructures.Function.Repetition
-public import BasicLeanDatastructures.List.Basic
 public import BasicLeanDatastructures.List.NonEmpty
+import BasicLeanDatastructures.List.Basic
 
 /-!
 # InfiniteList

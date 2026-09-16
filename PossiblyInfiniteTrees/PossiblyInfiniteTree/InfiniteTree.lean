@@ -5,9 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 module
 
-public import BasicLeanDatastructures.Set.Basic
-
-public import PossiblyInfiniteTrees.PossiblyInfiniteList.PossiblyInfiniteList
+public import PossiblyInfiniteTrees.PossiblyInfiniteList.InfiniteList
+import PossiblyInfiniteTrees.PossiblyInfiniteList.PossiblyInfiniteList
 
 /-!
 # InfiniteTreeSkeleton
