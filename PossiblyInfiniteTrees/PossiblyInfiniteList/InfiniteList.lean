@@ -8,6 +8,7 @@ module
 public import BasicLeanDatastructures.Function.Repetition
 public import BasicLeanDatastructures.List.NonEmpty
 import BasicLeanDatastructures.List.Basic
+import BasicLeanDatastructures.WellFounded
 
 /-!
 # InfiniteList
@@ -387,6 +388,18 @@ theorem take_add {l : InfiniteList α} : ∀ n m, l.take (n + m) = l.take n ++ (
   | zero => simp [take_zero]
   | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
 
+/-- When executing take after take, we can just execute it once with the smaller value. -/
+theorem take_take {l : InfiniteList α} : ∀ {n m}, (l.take n).take m = l.take (min n m) := by
+  intro n m
+  fun_induction take generalizing m with
+  | case1 l => simp
+  | case2 l n ih =>
+    cases m with
+    | zero => simp
+    | succ m =>
+      rw [List.take_succ_cons, Nat.succ_min_succ, take_succ]
+      rw [List.cons_eq_cons]; exact ⟨rfl, ih⟩
+
 /-- Getting the nth element from a taken list is just taking the nth element from the infinite list. -/
 @[simp, grind =]
 theorem getElem_take {l : InfiniteList α} : ∀ {n m} (lt : n < m), (l.take m)[n]'(by simpa using lt) = l.get n := by
@@ -485,6 +498,13 @@ theorem fromNonEmptyLists_take_length_head {ls : InfiniteList (NonEmptyList α)}
   simp only [head_cons]
   exact fromNonEmptyLists_take_length_cons
 
+/-- If we take at most the number of elements of the first finite list from the generated list, we can direclty take from the first list. -/
+theorem fromNonEmptyLists_take_le_length_head {ls : InfiniteList (NonEmptyList α)} {i : Nat} (le : i ≤ ls.head.toList.length) :
+    (fromNonEmptyLists ls).take i = ls.head.toList.take i := by
+  rw [← fromNonEmptyLists_take_length_head]
+  rw [take_take]
+  simp [le]
+
 /-- If we drop exactly the number of elements of the first finite list from the generated list, we essentially drop the first finite list. -/
 theorem fromNonEmptyLists_drop_length_cons {ls : InfiniteList (NonEmptyList α)} {as : NonEmptyList α} :
     (fromNonEmptyLists (cons as ls)).drop as.toList.length = fromNonEmptyLists ls := by
@@ -533,6 +553,51 @@ theorem fromNonEmptyLists_isContained {ls : InfiniteList (NonEmptyList α)} : �
     suffices ((ls.take m).flatMap NonEmptyList.toList).length < ((ls.take m.succ).flatMap NonEmptyList.toList).length by grind
     rw [take_succ']
     simp [NonEmptyList.toList]
+
+/-- Taking any number of elements from the generated list can be translated into taking a number of finite lists and appending a part of the one following. -/
+theorem fromNonEmptyLists_take_eq' {ls : InfiniteList (NonEmptyList α)} : ∀ {n}, ∃ m i,
+    (fromNonEmptyLists ls).take n = (ls.take m).flatMap NonEmptyList.toList ++ (ls.get m).toList.take i := by
+  intro n
+  cases n with
+  | zero => exists 0, 0
+  | succ n =>
+    rcases ls.fromNonEmptyLists_isContained n.succ with ⟨m, pre⟩
+    let prop := fun m => ls.fromNonEmptyLists.take n.succ <+: (ls.take m).flatMap NonEmptyList.toList
+    rcases minimal_element_for_property_and_transitive_relation (by intro _ _ _; exact Nat.lt_trans) prop m pre with ⟨smallest, pre_smallest, smallest_le, indeed_smallest⟩
+    cases smallest with
+    | zero => simp [prop, take_succ] at pre_smallest
+    | succ smallest =>
+      suffices ((ls.take smallest).flatMap NonEmptyList.toList).length < n + 1 ∧ n + 1 ≤ ((ls.take smallest.succ).flatMap NonEmptyList.toList).length by
+        rcases Nat.exists_eq_add_of_lt this.left with ⟨i, lt⟩
+        rw [Nat.add_assoc] at lt
+        exists smallest, i.succ
+        rw [fromNonEmptyLists_take_eq]
+        rw [lt, take_add]
+        apply List.append_eq_append_of_parts_eq _ _ _ _ rfl
+        rw [← head_drop, ← fromNonEmptyLists_drop_eq]
+        rw [fromNonEmptyLists_take_le_length_head]
+        have le := this.right
+        rw [lt, take_succ', List.flatMap_append, List.length_append, Nat.add_le_add_iff_left] at le
+        simp only [List.flatMap_singleton] at le
+        exact le
+      constructor
+      . apply Decidable.byContradiction
+        intro contra; rw [Nat.not_lt] at contra
+        apply indeed_smallest smallest smallest.lt_succ_self
+        have lt : smallest < m := by
+          cases smallest_le with
+          | inl eq => rw [← eq]; exact Nat.lt_succ_self smallest
+          | inr lt => exact Nat.lt_of_succ_lt lt
+        apply List.prefix_of_prefix_length_le pre _ (by rw [length_take]; exact contra)
+        conv => left; rw [fromNonEmptyLists_take_eq]
+        conv => right; rw [fromNonEmptyLists_take_eq]
+        rw [prefix_take_le_iff]
+        simp only [List.length_flatMap]
+        suffices ls.take smallest = (ls.take m).take smallest by
+          rw [this, List.map_take]; apply List.sum_take_le_sum _ ⟨smallest, by grind⟩
+        rw [take_take, Nat.min_eq_right (Nat.le_of_lt lt)]
+      . have := List.IsPrefix.length_le pre_smallest
+        simp only [length_take] at this; exact this
 
 /-- A member of the built list is a member of one of the finite lists (and vice versa). -/
 theorem fromNonEmptyLists_mem_iff {ls : InfiniteList (NonEmptyList α)} :
