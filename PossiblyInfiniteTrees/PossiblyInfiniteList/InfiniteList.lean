@@ -387,15 +387,31 @@ theorem take_add {l : InfiniteList α} : ∀ n m, l.take (n + m) = l.take n ++ (
   | zero => simp [take_zero]
   | succ m ih => rw [← Nat.add_assoc, take_succ', take_succ', get_drop, ih, List.append_assoc]
 
+/-- Getting the nth element from a taken list is just taking the nth element from the infinite list. -/
+@[simp, grind =]
+theorem getElem_take {l : InfiniteList α} : ∀ {n m} (lt : n < m), (l.take m)[n]'(by simpa using lt) = l.get n := by
+  intro n m lt
+  suffices ∀ (k : Nat), (l.take (n + k.succ))[n] = l.get n by
+    rcases Nat.exists_eq_add_of_lt lt with ⟨k, lt⟩
+    simp only [lt]; apply this
+  intro k
+  simp only [Nat.add_succ, ← Nat.succ_add, take_add]
+  rw [List.getElem_append_left (by simp)]
+  simp [take_succ']
+
+/-- Every member of a taken list is also a member of the infinite list. -/
+@[grind ->]
+theorem mem_of_mem_take {l : InfiniteList α} : ∀ {m : Nat} {a : α}, a ∈ l.take m -> a ∈ l := by
+  intro m a
+  rw [mem_iff, List.mem_iff_getElem]
+  intro ⟨n, lt, mem⟩; rw [length_take] at lt
+  exists n
+  rw [← mem]; apply Eq.symm
+  exact getElem_take lt
+
 /-- `take` contains all elements before the target length. -/
 theorem get_mem_take_of_lt {l : InfiniteList α} : ∀ n m, n < m -> l.get n ∈ l.take m := by
-  intro n m lt
-  suffices ∀ (k : Nat), l.get n ∈ l.take (n + k.succ) by
-    rcases Nat.exists_eq_add_of_lt lt with ⟨k, lt⟩
-    rw [lt]; apply this
-  intro k
-  rw [Nat.add_succ, ← Nat.succ_add, take_add]
-  apply List.mem_append_left; rw [take_succ']; simp
+  intro n m lt; rw [← getElem_take lt]; simp
 
 /--
 A taken list is a prefix of another taken list if the first contains at most the same number of element.
@@ -517,6 +533,33 @@ theorem fromNonEmptyLists_isContained {ls : InfiniteList (NonEmptyList α)} : �
     suffices ((ls.take m).flatMap NonEmptyList.toList).length < ((ls.take m.succ).flatMap NonEmptyList.toList).length by grind
     rw [take_succ']
     simp [NonEmptyList.toList]
+
+/-- A member of the built list is a member of one of the finite lists (and vice versa). -/
+theorem fromNonEmptyLists_mem_iff {ls : InfiniteList (NonEmptyList α)} :
+    ∀ {a : α}, a ∈ fromNonEmptyLists ls ↔ ∃ l ∈ ls, a ∈ l.toList := by
+  intro a
+  suffices a ∈ fromNonEmptyLists ls ↔ ∃ n, a ∈ (ls.take n).flatMap NonEmptyList.toList by
+    rw [this]; constructor
+    . intro ⟨n, mem⟩
+      rw [List.mem_flatMap] at mem; rcases mem with ⟨l, l_mem, mem⟩
+      exists l; exact ⟨mem_of_mem_take l_mem, mem⟩
+    . intro ⟨l, l_mem, mem⟩
+      rw [mem_iff] at l_mem; rcases l_mem with ⟨n, l_mem⟩
+      exists n.succ; rw [List.mem_flatMap]; exists l; constructor
+      . rw [← l_mem]; apply get_mem_take_of_lt; simp
+      . exact mem
+  rw [mem_iff]
+  constructor
+  . intro ⟨n, mem⟩
+    rcases ls.fromNonEmptyLists_isContained n.succ with ⟨m, pre⟩
+    exists m; apply List.IsPrefix.mem _ pre
+    rw [take_succ', ← mem]; simp
+  . intro ⟨n, mem⟩
+    rw [fromNonEmptyLists_take_eq, List.mem_iff_getElem] at mem
+    rcases mem with ⟨i, lt, mem⟩
+    rw [length_take] at lt
+    rw [getElem_take lt] at mem
+    exact ⟨_, mem⟩
 
 end FromNonEmptyLists
 
