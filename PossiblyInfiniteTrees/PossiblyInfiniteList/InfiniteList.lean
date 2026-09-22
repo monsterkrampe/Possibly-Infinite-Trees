@@ -287,6 +287,8 @@ end Attach
 
 section Generate
 
+open CustomBasicDatastructures
+
 /-!
 ## Generating an InfiniteList
 
@@ -294,28 +296,28 @@ We provide functions for "step-by-step" generation of an `InfiniteList` from a f
 -/
 
 /-- Construct an infinite list by repeating a generator function. This is essentially Stream'.iterate from Mathlib. -/
-def iterate (start : α) (generator : α -> α) : InfiniteList α := (generator.repeat_fun · start)
+def iterate (start : α) (generator : α -> α) : InfiniteList α := (Function.repeat_fun generator · start)
 
 /-- The head of an iterated list is the starting value. -/
 @[simp, grind =]
 theorem head_iterate {start : α} {generator : α -> α} : (iterate start generator).head = start := by rfl
 
 /-- Getting from an iterated list simply means repeating the generator the given number of times. (This essentially unfolds the definition.) -/
-theorem get_iterate {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n = generator.repeat_fun n start := by intros; rfl
+theorem get_iterate {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n = Function.repeat_fun generator n start := by intros; rfl
 
 /-- When getting the successor of a number `n` from an interated list, we can instead repeat the generator `n` times and then apply it once more. -/
 theorem get_succ_iterate {start : α} {generator : α -> α} :
-  ∀ n, (iterate start generator).get n.succ = generator (generator.repeat_fun n start) := by intros; rfl
+  ∀ n, (iterate start generator).get n.succ = generator (Function.repeat_fun generator n start) := by intros; rfl
 
 /-- When getting the successor of a number `n` from an interated list, we can instead apply the generator once initially, then iterate and then get the n-th element. -/
 theorem get_succ_iterate' {start : α} {generator : α -> α} : ∀ n, (iterate start generator).get n.succ = (iterate (generator start) generator).get n := by
-  intro n; rw [get_succ_iterate, get_iterate, generator.repeat_swap_one]
+  intro n; rw [get_succ_iterate, get_iterate, Function.repeat_swap_one (f := generator)]
 
 /-- When getting the sum of two numbers `n+m` from an interated list, we can instead generate the n-th value, and use that as the starting value for another m iterations. -/
 @[simp]
 theorem get_add_iterate {start : α} {generator : α -> α} :
     ∀ n m, (iterate start generator).get (n + m) = (iterate ((iterate start generator).get n) generator).get m := by
-  simp only [get_iterate]; intros; rw [generator.repeat_add, generator.repeat_swap]
+  simp only [get_iterate]; intros; rw [Function.repeat_add, Function.repeat_swap]
 
 /-- Instead of only iterating, we may want to create a kind of "carrier" list and then map this to the actually desired list. This is useful when the generator function requires more information that what actually ends up being in the desired list. Note that this is essentially the same as Stream'.corec from Mathlib. -/
 def generate (start : α) (generator : α -> α) (mapper : α -> β) : InfiniteList β := (iterate start generator).map mapper
@@ -326,11 +328,11 @@ theorem head_generate {start : α} {generator : α -> α} {mapper : α -> β} : 
 
 /-- The n-th element of a generated list results from applying the mapper after the n-th repetition of the generator function. -/
 theorem get_generate {start : α} {generator : α -> α} {mapper : α -> β} :
-  ∀ n, (generate start generator mapper).get n = mapper (generator.repeat_fun n start) := by intros; rfl
+  ∀ n, (generate start generator mapper).get n = mapper (Function.repeat_fun generator n start) := by intros; rfl
 
 /-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after the n-th repetition of the generator function. -/
 theorem get_succ_generate {start : α} {generator : α -> α} {mapper : α -> β} :
-  ∀ n, (generate start generator mapper).get n.succ = mapper (generator (generator.repeat_fun n start)) := by intros; rfl
+  ∀ n, (generate start generator mapper).get n.succ = mapper (generator (Function.repeat_fun generator n start)) := by intros; rfl
 
 /-- The successor of the n-th element of a generated list can be seen as taking the n-th element after initializing the generation process with the generator function already applied once in the beginning. -/
 theorem get_succ_generate' {start : α} {generator : α -> α} {mapper : α -> β} :
@@ -444,6 +446,8 @@ theorem prefix_take_le_iff {l : InfiniteList α} {n m : Nat} : l.take n <+: l.ta
 end Take
 
 section FromNonEmptyLists
+
+open CustomBasicDatastructures
 
 /-!
 ## Construct InfiniteList from InfiniteList of NonEmptyLists

@@ -9,6 +9,8 @@ public import BasicLeanDatastructures.Set.Finite
 
 public import PossiblyInfiniteTrees.PossiblyInfiniteTree.FiniteDegreeTree.Basic
 
+open CustomBasicDatastructures
+
 /-!
 # König's Lemma
 

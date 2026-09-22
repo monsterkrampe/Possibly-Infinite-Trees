@@ -307,6 +307,8 @@ end Attach
 
 section Generate
 
+open CustomBasicDatastructures
+
 /-!
 ## Generating a PossiblyInfiniteList
 
@@ -330,12 +332,12 @@ theorem head_generate {start : Option α} {generator : α -> Option α} {mapper 
 
 /-- The n-th element of a generated list results from applying the mapper after the n-th repetition of the generator function. -/
 theorem get?_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
-  ∀ n, (generate start generator mapper).get? n = ((·.bind generator).repeat_fun n start).map mapper := InfiniteList.get_generate
+  ∀ n, (generate start generator mapper).get? n = (Function.repeat_fun (·.bind generator) n start).map mapper := InfiniteList.get_generate
 
 /-- The successor of the n-th element of a generated list can be seen as applying the mapper function after the generator function after the n-th repetition of the generator function. -/
 theorem get?_succ_generate {start : Option α} {generator : α -> Option α} {mapper : α -> β} :
     ∀ n, (generate start generator mapper).get? n.succ =
-      (((·.bind generator).repeat_fun n start).bind generator).map mapper :=
+      ((Function.repeat_fun (·.bind generator) n start).bind generator).map mapper :=
   InfiniteList.get_succ_generate
 
 /-- The successor of the n-th element of a generated list can be seen as taking the n-th element after initializing the generation process with the generator function already applied once in the beginning. -/
