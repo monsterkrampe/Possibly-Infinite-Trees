@@ -155,6 +155,11 @@ theorem tail_cons (hd : α) (tl : PossiblyInfiniteList α) : (cons hd tl).tail =
 theorem cons_head_tail (l : PossiblyInfiniteList α) (hd : α) (h : l.head = .some hd) : l = cons hd l.tail := by
   rw [PossiblyInfiniteList.mk.injEq]; simp only [cons]; rw [← h]; apply InfiniteList.cons_head_tail
 
+/-- An element is is a `cons` list if and only if it is the head or it occurs in the tail. -/
+theorem mem_cons {tl : PossiblyInfiniteList α} {hd a : α} : a ∈ cons hd tl ↔ a = hd ∨ a ∈ tl := by
+  show some a ∈ InfiniteList.cons (some hd) tl.infinite_list ↔ a = hd ∨ some a ∈ tl.infinite_list
+  rw [InfiniteList.mem_cons]; simp
+
 end Basic
 
 section Suffixes

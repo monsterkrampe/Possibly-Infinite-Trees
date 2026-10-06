@@ -137,6 +137,16 @@ theorem tail_cons {hd : α} {tl : InfiniteList α} : (cons hd tl).tail = tl := b
 /-- Any `InfiniteList` can be written using the `cons` constructor. -/
 theorem cons_head_tail (l : InfiniteList α) : l = cons l.head l.tail := by ext n; cases n; rw [get_cons_zero]; rfl; rw [get_cons_succ]; rfl
 
+/-- An element is is a `cons` list if and only if it is the head or it occurs in the tail. -/
+theorem mem_cons {tl : InfiniteList α} {hd a : α} : a ∈ cons hd tl ↔ a = hd ∨ a ∈ tl := by
+  rw [mem_iff]
+  constructor
+  . intro ⟨n, mem⟩
+    cases n <;> grind
+  . intro or; cases or with
+    | inl eq_hd => exists 0; grind
+    | inr mem_tl => rw [mem_iff] at mem_tl; rcases mem_tl with ⟨n, mem_tl⟩; exists n.succ
+
 end Basic
 
 section Suffixes
